@@ -1,0 +1,683 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>EduBudget AI - Product Search</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e2e2e2",
+                        "primary-fixed": "#ffdcc3",
+                        "on-tertiary": "#00344c",
+                        "surface-container-lowest": "#141416",
+                        "surface-tint": "#ffb77d",
+                        "on-tertiary-fixed": "#001e2e",
+                        "surface-dim": "#17171A",
+                        "outline-variant": "#564334",
+                        "surface-container-low": "#1b1b1b",
+                        "on-primary": "#4d2600",
+                        "on-tertiary-fixed-variant": "#004c6c",
+                        "on-error": "#690005",
+                        "surface-variant": "#353535",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "primary": "#ffb77d",
+                        "glass-stroke": "rgba(255, 255, 255, 0.15)",
+                        "on-error-container": "#ffdad6",
+                        "background": "#1C1C1E",
+                        "on-tertiary-container": "#004360",
+                        "surface-container": "#1f1f1f",
+                        "tertiary-fixed-dim": "#85cfff",
+                        "error": "#ffb4ab",
+                        "on-primary-container": "#623200",
+                        "secondary-fixed": "#e2e2e2",
+                        "primary-fixed-dim": "#ffb77d",
+                        "accent-glow": "rgba(255, 140, 0, 0.2)",
+                        "primary-container": "#ff8c00",
+                        "inverse-primary": "#904d00",
+                        "inverse-surface": "#e2e2e2",
+                        "tertiary-container": "#00b5fc",
+                        "error-container": "#93000a",
+                        "on-surface-variant": "#ddc1ae",
+                        "surface-bright": "#393939",
+                        "secondary-container": "#454747",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-secondary": "#2f3131",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "surface-container-highest": "#353535",
+                        "glass-surface": "rgba(255, 255, 255, 0.05)",
+                        "surface-container-high": "#2a2a2a",
+                        "surface": "#1C1C1E",
+                        "tertiary-fixed": "#c7e7ff",
+                        "secondary": "#c6c6c7",
+                        "tertiary": "#85cfff",
+                        "on-primary-fixed-variant": "#6e3900",
+                        "on-secondary-container": "#b4b5b5",
+                        "on-surface": "#e2e2e2",
+                        "on-primary-fixed": "#2f1500",
+                        "outline": "#a48c7a",
+                        "inverse-on-surface": "#303030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "unit": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-padding": "32px",
+                        "pb-safe": "env(safe-area-inset-bottom, 20px)"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #1C1C1E;
+            color: #e2e2e2;
+            /* Noise texture overlay for high-end feel */
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+        }
+        
+        .glass-panel {
+            background-color: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-top-color: rgba(255, 255, 255, 0.2);
+            border-left-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .glass-input {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .glass-input:focus-within {
+            border-color: #ffb77d;
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.2);
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Range slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #ffb77d;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(255, 140, 0, 0.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #353535;
+            border-radius: 2px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen overflow-x-hidden font-body-md text-body-md pb-24 md:pb-0 pt-16">
+<!-- Ambient Glows -->
+<div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-container rounded-full blur-[150px] opacity-10 pointer-events-none"></div>
+<div class="fixed bottom-[20%] right-[-10%] w-[30%] h-[30%] bg-primary rounded-full blur-[120px] opacity-[0.05] pointer-events-none"></div>
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-glass-surface dark:bg-glass-surface backdrop-blur-3xl border-b border-glass-stroke shadow-none flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-primary dark:text-primary hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-2xl" data-icon="menu">menu</span>
+</button>
+<div class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary dark:text-primary md:font-headline-lg md:text-headline-lg tracking-tight">
+                EduBudget AI
+    </div>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors tap-highlight-transparent active:scale-95 transition-transform" onclick="location.href='/dashboard.html'">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+<span class="font-label-sm">Bank</span>
+</button>
+<button class="flex items-center gap-2 bg-primary-container/20 text-primary rounded-xl px-4 py-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform" onclick="location.href='/search.html'">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-sm">Shop</span>
+</button>
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors tap-highlight-transparent active:scale-95 transition-transform" onclick="location.href='/analytics.html'">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-label-sm">Budget</span>
+</button>
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors tap-highlight-transparent active:scale-95 transition-transform" onclick="location.href='/favorites.html'">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm">Profile</span>
+</button>
+</nav>
+<button class="hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform" onclick="location.href='/favorites.html'">
+<div class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden border border-glass-stroke">
+<img alt="Student Profile" class="w-full h-full object-cover" data-alt="A macro portrait photograph of a young, stylish university student in soft, high-key studio lighting. They have a confident expression. The background is a sleek dark void with subtle warm orange rim lighting. Highly detailed, 8k resolution, photorealistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnw0pRyAvX4Btk6zVhnWISbJPaMx3Q-y9TY4cAbKstxpmskEVx-alrBDb5_93LFZGyKVYrDVXVy_GZZBAgGnCEigJtlmR1p7rRn_0tzD6YjclU55pv9P38LhgU1QwmcoH0Xs0clh9oQ_FMj3biFVYmk5NJyVIBIwwVe6JaTTO5Ol7utgsx5ThEjRHPz10AcECT9IgkPy4cRois_MyhmUaIRFXXRrPKF2tQ86i7hwYbHMqx0zGZFg2Lmg">
+</div>
+</button>
+</header>
+<!-- Main Canvas -->
+<main class="w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop mt-gutter flex flex-col gap-gutter">
+<!-- Search Configuration Panel -->
+<section class="glass-panel rounded-3xl p-container-padding flex flex-col gap-unit relative overflow-hidden backdrop-blur-3xl">
+<!-- Subtle internal glow for header area -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary opacity-5 blur-[80px] rounded-full pointer-events-none"></div>
+<h1 class="font-headline-xl text-headline-xl text-on-background mb-4 text-on-background">Discover Products</h1>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter w-full relative z-10 items-end">
+<!-- Primary Search Input (Full Width on mobile, spanning multiple columns on desktop) -->
+<div class="md:col-span-12 glass-input rounded-3xl p-4 flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+<input class="bg-transparent border-none text-on-background placeholder-on-surface-variant w-full focus:ring-0 font-body-lg text-body-lg text-white" id="itemInput" placeholder="What are you looking for?" type="text">
+<button class="text-primary hover:text-primary-container transition-colors p-2 rounded-full hover:bg-white/5" type="button" id="micBtn" title="Search by voice">
+<span class="material-symbols-outlined" data-weight="fill" id="micIcon" style="font-variation-settings: 'FILL' 1;">mic</span>
+</button>
+</div>
+<!-- Location Input -->
+<div class="md:col-span-4 glass-input rounded-3xl p-4 flex items-center gap-3 h-[60px]">
+<span class="material-symbols-outlined text-primary-fixed">location_on</span>
+<input class="bg-transparent border-none text-on-background placeholder-on-surface-variant w-full focus:ring-0 text-on-background" id="locationInput" placeholder="Location (e.g., Durban)" type="text">
+</div>
+<!-- Price Range -->
+<div class="md:col-span-4 glass-input rounded-3xl p-4 flex items-center gap-3 h-[60px]">
+<span class="material-symbols-outlined text-primary-fixed">payments</span>
+<div class="flex items-center gap-2 w-full">
+<input class="bg-transparent border-none text-on-background placeholder-on-surface-variant w-full focus:ring-0 text-center p-0 text-on-background" id="minInput" placeholder="Min (R)" type="number">
+<span class="text-glass-stroke text-white">-</span>
+<input class="bg-transparent border-none text-on-background placeholder-on-surface-variant w-full focus:ring-0 text-center p-0 text-on-background" id="maxInput" placeholder="Max (R)" type="number">
+</div>
+</div>
+<!-- Distance: slider for quick adjustment + manual number input for exact/long-distance values -->
+<div class="md:col-span-2 glass-input rounded-3xl p-4 flex flex-col justify-center gap-2 h-[60px]">
+<div class="flex justify-between items-center w-full gap-2">
+<span class="text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 text-on-background">
+<span class="material-symbols-outlined text-[16px]">route</span> Distance
+                        </span>
+<div class="flex items-center gap-1">
+<input class="w-14 bg-transparent border border-glass-stroke rounded-md text-center text-primary font-label-lg text-label-lg focus:ring-0" id="radiusManualInput" type="number" min="1" max="2000" value="15">
+<span class="text-primary font-label-sm text-label-sm">km</span>
+</div>
+</div>
+<input class="w-full" id="radiusInput" max="100" min="1" type="range" value="15">
+</div>
+<!-- Search Action -->
+<div class="md:col-span-2 flex justify-end h-[60px]">
+<button class="bg-primary-container text-white font-label-lg text-label-lg py-3 px-6 rounded-full hover:bg-primary transition-colors shadow-[0_0_20px_rgba(255,140,0,0.3)] flex items-center justify-center gap-2 relative overflow-hidden group w-full h-full" id="searchBtn" type="button">
+<span class="relative z-10 whitespace-nowrap" id="searchBtnLabel">Search Local</span>
+<span class="material-symbols-outlined relative z-10 text-[18px]">arrow_forward</span>
+<!-- Button inner highlight -->
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none z-0"></div>
+<div class="absolute top-0 left-0 w-full h-[1px] bg-white/40 z-0"></div>
+</button>
+</div>
+</div>
+</section>
+<!-- AI Recommendation Banner -->
+<section class="glass-panel rounded-3xl p-6 hidden" id="recommendationBanner">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary">auto_awesome</span>
+<div>
+<h3 class="font-label-lg text-label-lg text-primary mb-1">AI Recommendation</h3>
+<p class="font-body-md text-body-md text-on-background" id="recommendationText"></p>
+</div>
+</div>
+</section>
+<!-- Budget Status: persistent, set from your Spending Target on the Profile
+     page. Updates automatically and warns if you're over. -->
+<section class="glass-panel rounded-2xl p-4 flex items-center gap-3" id="budgetStatusBanner">
+<span class="material-symbols-outlined" id="budgetStatusIcon">account_balance_wallet</span>
+<p class="font-body-md text-body-md flex-1" id="budgetStatusText">Loading budget status...</p>
+</section>
+<!-- Search Results Header -->
+<div class="flex justify-between items-end mt-4 px-2">
+<div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-background text-on-background">Nearby Deals</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1 text-secondary text-white" id="resultsCountLabel">Search for something to see real results</p>
+</div>
+<div class="flex gap-2">
+<button class="glass-panel p-2 rounded-xl text-primary flex items-center justify-center hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="glass-panel p-2 rounded-xl text-on-surface-variant flex items-center justify-center hover:bg-white/5 transition-colors text-white">
+<span class="material-symbols-outlined">sort</span>
+</button>
+</div>
+</div>
+<!-- Bento Grid Results -->
+<div class="flex gap-2 overflow-x-auto pb-4 px-2 no-scrollbar">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary-container/20 border border-primary/30 text-primary font-label-sm text-label-sm backdrop-blur-md" id="sortLowHigh" type="button">Price: Low to High</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-background font-label-sm text-label-sm backdrop-blur-md hover:bg-white/5 text-white" id="sortHighLow" type="button">Price: High to Low</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-background font-label-sm text-label-sm backdrop-blur-md hover:bg-white/5 text-white" type="button">Closest First</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-background font-label-sm text-label-sm backdrop-blur-md hover:bg-white/5 text-white" type="button">Rating</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-background font-label-sm text-label-sm backdrop-blur-md hover:bg-white/5 text-white" type="button">Condition</button>
+</div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter mb-12 items-start" id="resultsContainer">
+<p class="text-on-surface-variant col-span-full">Enter an item above and hit "Search Local" to see real, live results.</p>
+</div>
+</main>
+<!-- Directions & Travel Cost popup - shown instead of stretching the grid inline -->
+<div class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm" id="travelModal">
+<div class="glass-panel rounded-2xl p-6 max-w-md w-full max-h-[85vh] overflow-y-auto relative border border-glass-stroke">
+<button class="absolute top-4 right-4 text-on-surface-variant hover:text-on-background w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10" id="closeTravelModal" type="button">
+<span class="material-symbols-outlined">close</span>
+</button>
+<div id="travelModalContent" class="pr-6"></div>
+</div>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<!-- Determined active state: Shop (as this is a product search) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-glass-surface dark:bg-glass-surface backdrop-blur-3xl border-t border-glass-stroke shadow-none rounded-t-xl border-glass-stroke/50 bg-black/40">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16" onclick="location.href='/dashboard.html'">
+<span class="material-symbols-outlined text-2xl mb-1" data-icon="account_balance">account_balance</span>
+<span class="font-label-sm text-[10px] text-secondary text-white">Bank</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container/20 text-primary rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16" onclick="location.href='/search.html'">
+<span class="material-symbols-outlined text-2xl mb-1" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-sm text-[10px] text-white">Shop</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16" onclick="location.href='/analytics.html'">
+<span class="material-symbols-outlined text-2xl mb-1" data-icon="insights">insights</span>
+<span class="font-label-sm text-[10px] text-secondary text-white">Budget</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16" onclick="location.href='/favorites.html'">
+<span class="material-symbols-outlined text-2xl mb-1" data-icon="person">person</span>
+<span class="font-label-sm text-[10px] text-secondary text-white">Profile</span>
+</button>
+</nav>
+
+
+<script src="/shared.js"></script>
+<script>
+  let currentResults = [];
+  let currentUser = null;
+
+  function renderResults(results, radiusNote) {
+    const container = document.getElementById('resultsContainer');
+    const countLabel = document.getElementById('resultsCountLabel');
+    countLabel.textContent = `Found ${results.length} item${results.length === 1 ? '' : 's'} matching your search`;
+    if (radiusNote) {
+      countLabel.textContent += ` — ${radiusNote}`;
+    }
+    if (results.length === 0) {
+      container.innerHTML = '<p class="text-on-surface-variant col-span-full">No live results found - try a different search term.</p>';
+      return;
+    }
+    container.innerHTML = results.map((r, i) => `
+      <article class="glass-panel rounded-2xl overflow-hidden group hover:-translate-y-1 transition-transform duration-300 flex flex-col">
+        <div class="relative h-48 w-full overflow-hidden">
+          <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="${r.thumbnail || ''}" onerror="this.style.opacity=0">
+        </div>
+        <div class="p-4 flex flex-col gap-2 flex-grow">
+          <div class="flex justify-between items-start">
+            <h3 class="font-label-lg text-label-lg text-on-background line-clamp-2 text-on-background">${r.title || 'Untitled'}</h3>
+            <span class="font-headline-lg-mobile text-headline-lg-mobile font-bold ml-2 whitespace-nowrap text-primary">${r.price || 'N/A'}</span>
+          </div>
+          ${r.link ? `<a href="${r.link}" target="_blank" class="text-primary font-label-sm text-label-sm hover:underline">View listing</a>` : ''}
+          <div class="mt-auto pt-4 border-t border-glass-stroke/50 flex flex-col gap-1">
+            <div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm text-on-background">
+              <span class="material-symbols-outlined text-[14px]">storefront</span>
+              <span>${r.source || 'Unknown store'}</span>
+              ${r.distanceKm != null ? `<span class="text-primary ml-1">&middot; ${r.distanceKm} km away</span>` : (r.distanceKm === null && r.hasOwnProperty('distanceKm') ? `<span class="text-on-surface-variant/60 ml-1 italic">&middot; distance unverified</span>` : '')}
+            </div>
+            <button class="flex items-center gap-1 text-primary font-label-sm text-label-sm hover:underline text-left" onclick="getDirections(${i})" type="button">
+              <span class="material-symbols-outlined text-[14px]">directions_car</span>
+              <span>Directions &amp; Travel Cost</span>
+            </button>
+            <button class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm hover:text-primary text-left" onclick="saveFavourite(${i})" type="button">
+              <span class="material-symbols-outlined text-[14px]">favorite</span>
+              <span>Save to Favourites</span>
+            </button>
+          </div>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  // Best-effort geolocation with a short timeout - used as a radius-filter
+  // anchor when no location text is typed. Never blocks the search if denied.
+  function getPositionQuick(timeoutMs = 4000) {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      const timer = setTimeout(() => resolve(null), timeoutMs);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { clearTimeout(timer); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+        () => { clearTimeout(timer); resolve(null); }
+      );
+    });
+  }
+
+  async function doSearch() {
+    const item = document.getElementById('itemInput').value.trim();
+    const location = document.getElementById('locationInput').value.trim();
+    const minPrice = document.getElementById('minInput').value;
+    const maxPrice = document.getElementById('maxInput').value;
+    const radiusKm = document.getElementById('radiusManualInput').value;
+    if (!item) return alert('Enter an item to search for');
+
+    const btnLabel = document.getElementById('searchBtnLabel');
+    btnLabel.textContent = 'Searching...';
+    document.getElementById('recommendationBanner').classList.add('hidden');
+    document.getElementById('resultsContainer').innerHTML = '<p class="text-on-surface-variant col-span-full">Searching real listings...</p>';
+
+    // Only bother asking for GPS if a radius is set and no location text was
+    // typed (location text takes priority as the anchor when both are given).
+    let originLat = null, originLng = null;
+    if (radiusKm && !location) {
+      const pos = await getPositionQuick();
+      if (pos) { originLat = pos.lat; originLng = pos.lng; }
+    }
+
+    try {
+      const resp = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item,
+          minPrice: minPrice || null,
+          maxPrice: maxPrice || null,
+          location: location || null,
+          radiusKm: radiusKm || null,
+          originLat, originLng,
+        }),
+      });
+      const data = await resp.json();
+      btnLabel.textContent = 'Search Local';
+
+      if (data.error) {
+        document.getElementById('resultsContainer').innerHTML = `<p class="text-error col-span-full">Error: ${data.detail || data.error}</p>`;
+        return;
+      }
+
+      if (data.recommendation) {
+        document.getElementById('recommendationText').textContent = data.recommendation;
+        document.getElementById('recommendationBanner').classList.remove('hidden');
+      }
+      if (data.radiusNote) {
+        document.getElementById('resultsCountLabel').dataset.radiusNote = data.radiusNote;
+      }
+
+      currentResults = data.results || [];
+      renderResults(currentResults, data.radiusNote);
+    } catch (err) {
+      btnLabel.textContent = 'Search Local';
+      document.getElementById('resultsContainer').innerHTML = '<p class="text-error col-span-full">Network error - is the server running?</p>';
+    }
+  }
+
+  function sortResults(dir) {
+    currentResults = [...currentResults].sort((a, b) => {
+      const pa = a.extracted_price ?? Infinity, pb = b.extracted_price ?? Infinity;
+      return dir === 'asc' ? pa - pb : pb - pa;
+    });
+    renderResults(currentResults);
+  }
+  document.getElementById('sortLowHigh').addEventListener('click', () => sortResults('asc'));
+  document.getElementById('sortHighLow').addEventListener('click', () => sortResults('desc'));
+
+  async function saveFavourite(i) {
+    const r = currentResults[i];
+    await fetch('/api/favourites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemName: r.title, storeName: r.source, price: r.extracted_price || null, link: r.link || null }),
+    });
+    alert('Saved to favourites.');
+  }
+
+  // Resolves a store name to one exact nearby branch using the browser's
+  // real GPS position, then fetches real distance/time + estimated
+  // travel costs and shows them, plus mode-specific Maps links.
+  function openTravelModal() {
+    document.getElementById('travelModal').classList.remove('hidden');
+    document.getElementById('travelModal').classList.add('flex');
+  }
+  function closeTravelModal() {
+    document.getElementById('travelModal').classList.add('hidden');
+    document.getElementById('travelModal').classList.remove('flex');
+  }
+  document.getElementById('closeTravelModal').addEventListener('click', closeTravelModal);
+  document.getElementById('travelModal').addEventListener('click', (e) => {
+    if (e.target.id === 'travelModal') closeTravelModal();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTravelModal(); });
+
+  function getDirections(i) {
+    const r = currentResults[i];
+    const storeName = r.source || '';
+    const location = document.getElementById('locationInput').value.trim();
+    const modalContent = document.getElementById('travelModalContent');
+    const openFallback = () => {
+      const q = encodeURIComponent(`${storeName} ${location}`.trim());
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${q}`, '_blank');
+    };
+
+    if (!navigator.geolocation) {
+      alert("Your browser doesn't support location - opening an approximate search instead.");
+      return openFallback();
+    }
+
+    modalContent.innerHTML = '<p class="text-on-surface-variant font-label-sm">Finding nearest branch and travel options...</p>';
+    openTravelModal();
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: originLat, longitude: originLng } = pos.coords;
+        try {
+          // If the search step already resolved this exact branch's real
+          // coordinates (radius filtering), reuse them so this popup shows
+          // the SAME branch instead of a fresh, potentially different match.
+          let storeUrl = `/api/nearest-store?name=${encodeURIComponent(storeName)}&lat=${originLat}&lng=${originLng}&locationText=${encodeURIComponent(location)}`;
+          if (r.storeLat != null && r.storeLng != null) {
+            storeUrl += `&knownLat=${r.storeLat}&knownLng=${r.storeLng}`;
+          }
+          const storeResp = await fetch(storeUrl);
+          const store = await storeResp.json();
+          if (!store.found || !store.lat || !store.lng) {
+            modalContent.innerHTML = '<p class="text-on-surface-variant font-label-sm">Exact branch not found - opened an approximate search instead.</p>';
+            return openFallback();
+          }
+
+          const budget = document.getElementById('maxInput').value || null;
+          const travelResp = await fetch('/api/travel-options', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              originLat, originLng, destLat: store.lat, destLng: store.lng,
+              itemPrice: r.extracted_price || null, budget,
+            }),
+          });
+          const travel = await travelResp.json();
+
+          if (travel.error) {
+            modalContent.innerHTML = `<p class="text-error font-label-sm">Travel estimate failed: ${travel.detail || travel.error}</p>`;
+            return;
+          }
+
+          const driveUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}&travelmode=driving`;
+          const walkUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}&travelmode=walking`;
+
+          modalContent.innerHTML = `
+            <h3 class="font-label-lg text-label-lg text-on-background mb-2 pr-4">${store.title || storeName}</h3>
+            <div class="text-on-surface-variant font-body-md text-sm mb-3">${store.address || 'Address unavailable'}</div>
+            ${store.exactMatch ? `<div class="text-xs text-primary mb-3">✓ Same branch used in your search results</div>` : ''}
+            ${store.usedTypedLocation ? `<div class="text-xs text-on-surface-variant/70 mb-3">Searched near "${location}", not your current GPS position.</div>` : ''}
+            <div class="space-y-2 font-label-sm text-label-sm text-on-surface-variant border-t border-glass-stroke pt-3">
+              <div class="text-on-background font-semibold">Distance: ${travel.distanceKm} km</div>
+              <div>🚶 Walking: ${travel.walking.durationMin} min - R0 - <a class="text-primary hover:underline" href="${walkUrl}" target="_blank">open in Maps</a></div>
+              <div>🚕 Taxi (est.): ${formatZAR(travel.taxiEstimate)} - <a class="text-primary hover:underline" href="${driveUrl}" target="_blank">open in Maps</a></div>
+              <div>🚗 Uber (est.): ${travel.uberEstimate != null ? formatZAR(travel.uberEstimate) : 'N/A'} - <a class="text-primary hover:underline" href="${driveUrl}" target="_blank">open in Maps</a></div>
+              ${travel.remainingBudget != null ? `<div>Remaining budget after item: ${formatZAR(travel.remainingBudget)}</div>` : ''}
+            </div>
+            <div class="text-primary italic text-sm pt-3 mt-3 border-t border-glass-stroke">AI: ${travel.recommendation}</div>
+          `;
+        } catch (e) {
+          modalContent.innerHTML = '<p class="text-on-surface-variant font-label-sm">Something went wrong - opened an approximate search instead.</p>';
+          openFallback();
+        }
+      },
+      () => {
+        alert('Location permission denied - opening an approximate search instead.');
+        openFallback();
+      }
+    );
+  }
+
+  async function refreshBudgetStatus() {
+    try {
+      const resp = await fetch('/api/dashboard');
+      const dash = await resp.json();
+      const target = currentUser.spendingTarget != null ? Number(currentUser.spendingTarget) : Number(dash.monthlyBudget);
+      const spent = Number(dash.totalSpent);
+      const remaining = target - spent;
+      const banner = document.getElementById('budgetStatusBanner');
+      const icon = document.getElementById('budgetStatusIcon');
+      const text = document.getElementById('budgetStatusText');
+
+      banner.classList.remove('bg-red-500/10', 'border', 'border-red-500/40', 'bg-yellow-500/10', 'border-yellow-500/40');
+      if (remaining < 0) {
+        icon.textContent = 'warning';
+        icon.className = 'material-symbols-outlined text-red-400';
+        text.className = 'font-body-md text-body-md flex-1 text-red-400';
+        text.textContent = `Over budget: you've spent ${formatZAR(spent)} of your ${formatZAR(target)} target (${formatZAR(Math.abs(remaining))} over).`;
+      } else if (remaining < target * 0.2) {
+        icon.textContent = 'error_outline';
+        icon.className = 'material-symbols-outlined text-yellow-400';
+        text.className = 'font-body-md text-body-md flex-1 text-yellow-400';
+        text.textContent = `Getting close: ${formatZAR(remaining)} left of your ${formatZAR(target)} target.`;
+      } else {
+        icon.textContent = 'account_balance_wallet';
+        icon.className = 'material-symbols-outlined text-primary';
+        text.className = 'font-body-md text-body-md flex-1 text-on-surface-variant';
+        text.textContent = `${formatZAR(remaining)} left of your ${formatZAR(target)} target (${formatZAR(spent)} spent so far).`;
+      }
+      return { target, spent, remaining };
+    } catch (e) {
+      document.getElementById('budgetStatusText').textContent = 'Set a Spending Target or Monthly Budget on the Profile page to see this.';
+      return null;
+    }
+  }
+
+  // Distance: slider and manual number input stay in sync both ways.
+  // Slider visually caps at 100km (keeps the drag range usable), but the
+  // manual input allows any value (e.g. 500+ km for cross-province searches)
+  // - the manual input is always the source of truth sent to the backend.
+  const radiusSlider = document.getElementById('radiusInput');
+  const radiusManual = document.getElementById('radiusManualInput');
+  radiusSlider.addEventListener('input', () => { radiusManual.value = radiusSlider.value; });
+  radiusManual.addEventListener('input', () => {
+    const v = Number(radiusManual.value);
+    if (v >= 1 && v <= Number(radiusSlider.max)) radiusSlider.value = v;
+  });
+
+  // Voice search: click the mic, speak, it fills the box and searches
+  // automatically. Uses the browser's built-in Web Speech API (free, no
+  // key) - supported in Chrome/Edge; Safari/Firefox support varies.
+  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micBtn = document.getElementById('micBtn');
+  const micIcon = document.getElementById('micIcon');
+  if (SpeechRecognitionAPI) {
+    const recognition = new SpeechRecognitionAPI();
+    recognition.lang = 'en-ZA';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    let listening = false;
+    micBtn.addEventListener('click', () => {
+      if (listening) { recognition.stop(); return; }
+      try {
+        recognition.start();
+      } catch (e) { /* already started - ignore */ }
+    });
+    recognition.addEventListener('start', () => {
+      listening = true;
+      micIcon.textContent = 'graphic_eq';
+      micBtn.classList.add('text-red-400');
+    });
+    recognition.addEventListener('end', () => {
+      listening = false;
+      micIcon.textContent = 'mic';
+      micBtn.classList.remove('text-red-400');
+    });
+    recognition.addEventListener('result', (event) => {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById('itemInput').value = transcript;
+      doSearch();
+    });
+    recognition.addEventListener('error', (event) => {
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        alert('Voice search error: ' + event.error);
+      }
+    });
+  } else {
+    micBtn.addEventListener('click', () => {
+      alert("Voice search isn't supported in this browser - try Chrome or Edge.");
+    });
+  }
+
+  document.getElementById('searchBtn').addEventListener('click', doSearch);
+  document.getElementById('itemInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+
+  (async () => {
+    currentUser = await requireAuthOrRedirect();
+    if (!currentUser) return;
+
+    const maxInput = document.getElementById('maxInput');
+    if (!maxInput.value && currentUser.spendingTarget != null) {
+      maxInput.value = currentUser.spendingTarget;
+    }
+
+    await refreshBudgetStatus();
+
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    if (q) {
+      document.getElementById('itemInput').value = q;
+      doSearch();
+    }
+  })();
+</script>
+</body></html>

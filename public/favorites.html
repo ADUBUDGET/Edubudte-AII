@@ -1,0 +1,573 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Saved Items &amp; Profile - EduBudget AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-variant": "#353535",
+                "on-tertiary-container": "#004360",
+                "on-error-container": "#ffdad6",
+                "on-secondary-fixed-variant": "#454747",
+                "surface-container": "#1f1f1f",
+                "on-secondary-container": "#b4b5b5",
+                "inverse-primary": "#904d00",
+                "on-tertiary-fixed-variant": "#004c6c",
+                "accent-glow": "rgba(255, 140, 0, 0.2)",
+                "tertiary": "#85cfff",
+                "surface-dim": "#17171A",
+                "on-background": "#e2e2e2",
+                "surface-container-high": "#2a2a2a",
+                "on-primary-container": "#623200",
+                "on-primary-fixed": "#2f1500",
+                "primary": "#ffb77d",
+                "on-tertiary-fixed": "#001e2e",
+                "surface": "#1C1C1E",
+                "secondary": "#c6c6c7",
+                "surface-container-lowest": "#141416",
+                "outline": "#a48c7a",
+                "on-primary": "#4d2600",
+                "on-secondary-fixed": "#1a1c1c",
+                "secondary-fixed": "#e2e2e2",
+                "background": "#1C1C1E",
+                "secondary-container": "#454747",
+                "primary-fixed": "#ffdcc3",
+                "surface-bright": "#393939",
+                "on-tertiary": "#00344c",
+                "tertiary-fixed-dim": "#85cfff",
+                "tertiary-container": "#00b5fc",
+                "primary-container": "#ff8c00",
+                "on-secondary": "#2f3131",
+                "secondary-fixed-dim": "#c6c6c7",
+                "outline-variant": "#564334",
+                "on-error": "#690005",
+                "error-container": "#93000a",
+                "surface-container-highest": "#353535",
+                "primary-fixed-dim": "#ffb77d",
+                "inverse-on-surface": "#303030",
+                "on-surface-variant": "#ddc1ae",
+                "inverse-surface": "#e2e2e2",
+                "glass-surface": "rgba(255, 255, 255, 0.05)",
+                "error": "#ffb4ab",
+                "tertiary-fixed": "#c7e7ff",
+                "surface-container-low": "#1b1b1b",
+                "on-primary-fixed-variant": "#6e3900",
+                "surface-tint": "#ffb77d",
+                "on-surface": "#e2e2e2",
+                "glass-stroke": "rgba(255, 255, 255, 0.15)"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "container-padding": "32px",
+                "unit": "8px",
+                "margin-mobile": "20px",
+                "gutter": "24px",
+                "margin-desktop": "64px"
+        },
+        "fontFamily": {
+                "headline-xl": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-lg-mobile": [
+                        "Plus Jakarta Sans"
+                ],
+                "label-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-md": [
+                        "Plus Jakarta Sans"
+                ],
+                "label-sm": [
+                        "Plus Jakarta Sans"
+                ]
+        },
+        "fontSize": {
+                "headline-xl": [
+                        "40px",
+                        {
+                                "lineHeight": "48px",
+                                "letterSpacing": "-0.03em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "label-lg": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "letterSpacing": "0.02em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-sm": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "700"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        body {
+            background-color: #1C1C1E;
+            color: #e2e2e2;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .glass-panel {
+            background-color: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.1);
+        }
+        
+        .glass-input {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            color: #e2e2e2;
+        }
+        
+        .glass-input:focus {
+            border-color: #ffb77d;
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.2);
+            outline: none;
+        }
+
+        .primary-btn {
+            background-color: #ff8c00;
+            color: white;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 0 15px rgba(255, 140, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .primary-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .primary-btn:active {
+            transform: translateY(1px);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #353535;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #454747;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col relative pb-32 md:pb-0 overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="bg-glass-surface dark:bg-glass-surface docked full-width top-0 sticky backdrop-blur-3xl border-b border-glass-stroke shadow-none z-50">
+<div class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop h-16 max-w-7xl mx-auto">
+<button class="text-on-surface hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform md:hidden">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold text-primary dark:text-primary tracking-tight text-on-background">EduBudget AI</h1>
+<!-- Desktop Nav (Hidden on Mobile) -->
+<nav class="hidden md:flex items-center space-x-8">
+<a class="text-on-surface font-label-lg text-label-lg hover:text-primary transition-colors flex items-center space-x-2" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+<span class="">Bank</span>
+</a>
+<a class="text-on-surface font-label-lg text-label-lg hover:text-primary transition-colors flex items-center space-x-2" href="/search.html">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+<span class="">Shop</span>
+</a>
+<a class="text-on-surface font-label-lg text-label-lg hover:text-primary transition-colors flex items-center space-x-2" href="/analytics.html">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="">Budget</span>
+</a>
+<a class="text-primary font-label-lg text-label-lg flex items-center space-x-2 border-b-2 border-primary pb-1" href="/favorites.html">
+<span class="material-symbols-outlined" data-icon="person" data-weight="fill" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="">Profile</span>
+</a>
+</nav>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-glass-stroke shrink-0 hidden md:block">
+<img alt="student profile" class="w-full h-full object-cover" data-alt="A futuristic, high-fidelity avatar portrait of a modern student. The character has a sleek, tech-wear aesthetic, bathed in cinematic lighting with deep blacks and vibrant warm orange rim light. Rendered in a polished, premium digital art style reflecting a sophisticated dark-mode environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD34pLyZMXWNm3EtkasMAJJXzjUv0_eGZOYybAam6ZZ8sysTPoMjyw4hdc0HxhWJi5-RFSa_683_GwdbbQWXXuqM5Rqoztuk84518jUGXe00k5aIEgaak0rVOk1zL-C9Z-fXnjeIbiLUfftMWt01J-MJ4-h3-MIdIhWZgBc8k_fz3RvqK7c44BuKl2e8MKj5njMRA0JTrJofNmQ8wygh4HuxB2WUtzJuhJ_IvAjEYgD59Spiw3Gc5j7KA">
+</div>
+<!-- Mobile trailing avatar -->
+<div class="w-8 h-8 rounded-full overflow-hidden border border-glass-stroke shrink-0 md:hidden">
+<img alt="student profile" class="w-full h-full object-cover" data-alt="A futuristic, high-fidelity avatar portrait of a modern student. The character has a sleek, tech-wear aesthetic, bathed in cinematic lighting with deep blacks and vibrant warm orange rim light. Rendered in a polished, premium digital art style reflecting a sophisticated dark-mode environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJ96MhuYrCkWMvZAlnmF9_mC8PgfEqScm8AmzuVCy-e5-2WRzlnZjlsx2-x7NMutb_X60BfvbAQO1FgsNTX-CctfrjRRPAgiBS5G2XYu-HR1NKi2ibflp00VlH0pupNS4UyPJgz4YFqeb9lHbxIzFrBmTfC2G7hSfJ6wkVsqYiA-QdrPcIa2V3Y92QKFLLdiIqHfpuR63pNx3f7xTVDGFv7gBrTaCTCwrWUr6gVWHmfxBLts3dIEC3gg">
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-8 flex flex-col md:flex-row gap-gutter">
+<!-- Left Column: Profile Settings (Bento Grid Style) -->
+<div class="w-full md:w-1/3 flex flex-col gap-6">
+<!-- Profile Header Card -->
+<div class="glass-panel rounded-2xl p-container-padding flex flex-col items-center text-center border-white/10">
+<div class="relative mb-6 group cursor-pointer">
+<div class="w-24 h-24 rounded-full overflow-hidden border-2 border-primary shadow-[0_0_20px_rgba(255,140,0,0.3)]">
+<img alt="student profile large" class="w-full h-full object-cover transition-transform group-hover:scale-110" data-alt="A futuristic, high-fidelity avatar portrait of a modern student. The character has a sleek, tech-wear aesthetic, bathed in cinematic lighting with deep blacks and vibrant warm orange rim light. Rendered in a polished, premium digital art style reflecting a sophisticated dark-mode environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3pmtO-s9hwkgLSZMVptao0btHudigSxWG_JdO92C4W3qgL_YnK3iBArUGrSwtblTNqNsixKUIqWGe3cgXd6jS1ERkL05M2jgXIHp57fcrsmksuZN0qAW_ifLHInXNlPbDuX6tUHQBjUYnmOWaG-A6GdM2uU8QwViVva9gBrIJss4buLGb7uTq9WaMZSFd-m4f1hUYwXk_7o8AXtvb8at6QfyUyNslnzk6ZvYfGLq0sArYduMRIiisMQ">
+</div>
+<div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white" data-icon="edit">edit</span>
+</div>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-background mb-1 text-on-background" id="profileName">Loading...</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4 text-on-surface" id="profileEmail"></p>
+<div class="bg-surface-container-high px-4 py-2 rounded-full border border-glass-stroke flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(255,140,0,0.8)]"></span>
+<span class="font-label-sm text-label-sm text-on-surface" id="memberBadge">Student</span>
+</div>
+</div>
+<!-- Settings Accordion/List -->
+<div class="glass-panel rounded-2xl p-6 flex flex-col gap-4 border-white/10">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider mb-2 text-on-background">Account Settings</h3>
+<!-- Monthly Budget (real, editable) -->
+<div class="group">
+<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-white/5 border border-transparent hover:border-glass-stroke transition-all" id="toggleBudgetSetting" type="button">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<div class="text-left">
+<p class="font-label-lg text-label-lg text-on-background">Monthly Budget</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm" id="currentBudgetLabel">Loading...</p>
+</div>
+</div>
+<span class="material-symbols-outlined group-hover:text-primary transition-colors text-on-surface" data-icon="chevron_right">chevron_right</span>
+</button>
+<div class="hidden px-4 pb-2 flex gap-2 items-center" id="budgetSettingForm">
+<input class="glass-input flex-1 rounded-xl px-3 py-2 bg-white/5 border border-glass-stroke text-on-surface" id="newBudgetInput" placeholder="e.g. 3000" type="number">
+<button class="px-4 py-2 rounded-xl bg-primary text-on-primary font-label-sm" id="saveBudgetBtn" type="button">Save</button>
+</div>
+</div>
+<!-- Spending Target: persists and pre-fills the Shop page's Max field, and
+     drives the over-budget warning shown while searching. -->
+<div class="group">
+<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-white/5 border border-transparent hover:border-glass-stroke transition-all" id="toggleTargetSetting" type="button">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="flag">flag</span>
+</div>
+<div class="text-left">
+<p class="font-label-lg text-label-lg text-on-background">Spending Target</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm" id="currentTargetLabel">Loading...</p>
+</div>
+</div>
+<span class="material-symbols-outlined group-hover:text-primary transition-colors text-on-surface" data-icon="chevron_right">chevron_right</span>
+</button>
+<div class="hidden px-4 pb-2 flex gap-2 items-center" id="targetSettingForm">
+<input class="glass-input flex-1 rounded-xl px-3 py-2 bg-white/5 border border-glass-stroke text-on-surface" id="newTargetInput" placeholder="e.g. 500 for this shopping round" type="number">
+<button class="px-4 py-2 rounded-xl bg-primary text-on-primary font-label-sm" id="saveTargetBtn" type="button">Save</button>
+</div>
+</div>
+<!-- Password Setting -->
+<div class="group">
+<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-white/5 border border-transparent hover:border-glass-stroke transition-all">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="lock">lock</span>
+</div>
+<div class="text-left">
+<p class="font-label-lg text-label-lg text-on-background">Password &amp; Security</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Not available in this build</p>
+</div>
+</div>
+<span class="material-symbols-outlined group-hover:text-primary transition-colors text-on-surface" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- Expandable content (simulated closed state for UI cleaniness, would use JS in reality) -->
+</div>
+<!-- Accessibility Setting -->
+<div class="group">
+<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-white/5 border border-transparent hover:border-glass-stroke transition-all">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="accessibility_new">accessibility_new</span>
+</div>
+<div class="text-left">
+<p class="font-label-lg text-label-lg text-on-background">Accessibility</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Not available in this build</p>
+</div>
+</div>
+<span class="material-symbols-outlined group-hover:text-primary transition-colors text-on-surface" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<!-- Notifications Setting -->
+<div class="group">
+<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-white/5 border border-transparent hover:border-glass-stroke transition-all">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</div>
+<div class="text-left">
+<p class="font-label-lg text-label-lg text-on-background">Notifications</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Not available in this build</p>
+</div>
+</div>
+<span class="material-symbols-outlined group-hover:text-primary transition-colors text-on-surface" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<div class="pt-4 mt-2 border-t border-glass-stroke">
+<button class="w-full p-3 rounded-xl border border-error/30 text-error hover:bg-error/10 transition-colors font-label-lg text-label-lg flex items-center justify-center space-x-2" id="signOutBtn" type="button">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="">Sign Out</span>
+</button>
+</div>
+</div>
+<!-- Budget Log (real CRUD - not part of the original design, added because
+     logging a purchase has to happen somewhere for the Dashboard/Analytics
+     numbers to be real) -->
+<div class="glass-panel rounded-2xl p-6 flex flex-col gap-4 border-white/10">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider mb-2 text-on-background">Log a Purchase</h3>
+<div class="flex flex-col gap-2">
+<input class="glass-input rounded-xl px-3 py-2 bg-white/5 border border-glass-stroke text-on-surface" id="logAmount" placeholder="Amount (R)" type="number">
+<select class="glass-input rounded-xl px-3 py-2 bg-white/5 border border-glass-stroke text-on-surface" id="logCategory">
+<option value="Food" class="bg-surface">Food</option>
+<option value="Transport" class="bg-surface">Transport</option>
+<option value="Books" class="bg-surface">Books</option>
+<option value="Accommodation" class="bg-surface">Accommodation</option>
+<option value="Other" class="bg-surface">Other</option>
+</select>
+<input class="glass-input rounded-xl px-3 py-2 bg-white/5 border border-glass-stroke text-on-surface" id="logDescription" placeholder="Description (optional)" type="text">
+<button class="px-4 py-2 rounded-xl bg-primary text-on-primary font-label-sm" id="logSpendBtn" type="button">Log Spend</button>
+</div>
+<div class="pt-2 border-t border-glass-stroke" id="budgetLogList">
+<p class="text-on-surface-variant font-body-md text-sm">Loading...</p>
+</div>
+</div>
+</div>
+<!-- Right Column: Saved Items Canvas -->
+<div class="w-full md:w-2/3 flex flex-col">
+<div class="flex items-center justify-between mb-6">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background text-on-background">Saved Essentials</h2>
+<p class="font-body-md text-body-md text-on-surface-variant text-on-surface">Your bookmarked tech and study gear.</p>
+</div>
+<div class="flex space-x-2">
+<button class="w-10 h-10 rounded-full glass-panel flex items-center justify-center hover:bg-white/10 transition-colors text-primary border-white/10">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+</button>
+<button class="w-10 h-10 rounded-full glass-panel flex items-center justify-center hover:bg-white/10 transition-colors text-on-surface-variant border-white/10">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+</button>
+</div>
+</div>
+<!-- Bento Grid for Saved Items -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="favouritesContainer">
+<p class="text-on-surface-variant font-body-md col-span-2">Loading...</p>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden bg-glass-surface dark:bg-glass-surface fixed bottom-0 w-full rounded-t-xl backdrop-blur-3xl border-t border-glass-stroke shadow-none z-50 border-white/10 bg-black/60">
+<div class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl" href="/dashboard.html">
+<span class="material-symbols-outlined mb-1" data-icon="account_balance">account_balance</span>
+<span class="font-label-sm text-label-sm">Bank</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl" href="/search.html">
+<span class="material-symbols-outlined mb-1" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-sm text-label-sm">Shop</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl" href="/analytics.html">
+<span class="material-symbols-outlined mb-1" data-icon="insights">insights</span>
+<span class="font-label-sm text-label-sm">Budget</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container/20 rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform text-white" href="/favorites.html">
+<span class="material-symbols-outlined mb-1" data-icon="person" data-weight="fill" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</div>
+</nav>
+
+
+</body></html>
+<script src="/shared.js"></script>
+<script>
+  let currentUser = null;
+
+  function renderFavourites(favs) {
+    const el = document.getElementById('favouritesContainer');
+    if (!favs || favs.length === 0) {
+      el.innerHTML = '<p class="text-on-surface-variant font-body-md col-span-2">No favourites yet - save some from the Shop page.</p>';
+      return;
+    }
+    el.innerHTML = favs.map(f => `
+      <div class="glass-panel rounded-2xl overflow-hidden group flex flex-col border-white/10">
+        <div class="p-6 flex-1 flex flex-col">
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="font-body-lg text-body-lg font-bold text-on-background line-clamp-2 leading-tight text-on-background">${f.item_name}</h3>
+            <button class="ml-2 w-9 h-9 rounded-full bg-surface-container/50 border border-glass-stroke flex items-center justify-center text-primary hover:bg-primary/20 transition-colors shrink-0" onclick="removeFavourite(${f.id})" title="Remove from favourites">
+              <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+            </button>
+          </div>
+          <p class="font-body-md text-body-md text-on-surface-variant text-sm mb-2">${f.store_name || 'Unknown store'}${f.price ? ' &middot; ' + formatZAR(f.price) : ''}</p>
+          <div class="mt-auto pt-4 border-t border-glass-stroke flex items-center justify-between">
+            <span class="text-on-surface-variant font-label-sm text-label-sm">Saved ${new Date(f.created_at).toLocaleDateString()}</span>
+            ${f.link ? `<a class="text-primary font-label-lg text-label-lg hover:underline decoration-primary underline-offset-4" href="${f.link}" target="_blank">View Deal</a>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function loadFavourites() {
+    const resp = await fetch('/api/favourites');
+    const favs = await resp.json();
+    renderFavourites(favs);
+  }
+
+  async function removeFavourite(id) {
+    await fetch('/api/favourites/' + id, { method: 'DELETE' });
+    loadFavourites();
+  }
+
+  function renderBudgetLog(entries) {
+    const el = document.getElementById('budgetLogList');
+    if (!entries || entries.length === 0) {
+      el.innerHTML = '<p class="text-on-surface-variant font-body-md text-sm pt-2">No purchases logged yet.</p>';
+      return;
+    }
+    el.innerHTML = entries.slice(0, 6).map(e => `
+      <div class="flex items-center justify-between py-2 text-sm">
+        <div class="text-on-surface">
+          <div>${formatZAR(e.amount)} <span class="text-on-surface-variant">- ${e.category}</span></div>
+          ${e.description ? `<div class="text-on-surface-variant text-xs">${e.description}</div>` : ''}
+        </div>
+        <button class="text-error text-xs" onclick="deleteBudgetEntry(${e.id})">Delete</button>
+      </div>
+    `).join('');
+  }
+
+  async function loadBudgetLog() {
+    const resp = await fetch('/api/budget');
+    const data = await resp.json();
+    renderBudgetLog(data.entries);
+  }
+
+  async function logSpend() {
+    const amount = document.getElementById('logAmount').value;
+    const category = document.getElementById('logCategory').value;
+    const description = document.getElementById('logDescription').value.trim();
+    if (!amount) return alert('Enter an amount');
+    await fetch('/api/budget', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, category, description }),
+    });
+    document.getElementById('logAmount').value = '';
+    document.getElementById('logDescription').value = '';
+    loadBudgetLog();
+  }
+
+  async function deleteBudgetEntry(id) {
+    await fetch('/api/budget/' + id, { method: 'DELETE' });
+    loadBudgetLog();
+  }
+
+  document.getElementById('logSpendBtn').addEventListener('click', logSpend);
+  document.getElementById('signOutBtn').addEventListener('click', logout);
+
+  document.getElementById('toggleBudgetSetting').addEventListener('click', () => {
+    document.getElementById('budgetSettingForm').classList.toggle('hidden');
+  });
+  document.getElementById('saveBudgetBtn').addEventListener('click', async () => {
+    const monthlyBudget = document.getElementById('newBudgetInput').value;
+    if (!monthlyBudget) return;
+    const resp = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ monthlyBudget }),
+    });
+    const updated = await resp.json();
+    document.getElementById('currentBudgetLabel').textContent = formatZAR(updated.monthlyBudget) + ' / month';
+    document.getElementById('budgetSettingForm').classList.add('hidden');
+  });
+
+  document.getElementById('toggleTargetSetting').addEventListener('click', () => {
+    document.getElementById('targetSettingForm').classList.toggle('hidden');
+  });
+  document.getElementById('saveTargetBtn').addEventListener('click', async () => {
+    const spendingTarget = document.getElementById('newTargetInput').value;
+    if (!spendingTarget) return;
+    const resp = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ spendingTarget }),
+    });
+    const updated = await resp.json();
+    document.getElementById('currentTargetLabel').textContent = formatZAR(updated.spendingTarget) + ' target';
+    document.getElementById('targetSettingForm').classList.add('hidden');
+  });
+
+  (async () => {
+    currentUser = await requireAuthOrRedirect();
+    if (!currentUser) return;
+
+    document.getElementById('profileName').textContent = currentUser.name;
+    document.getElementById('profileEmail').textContent = currentUser.email;
+    document.getElementById('memberBadge').textContent = 'Student';
+    document.getElementById('currentBudgetLabel').textContent = formatZAR(currentUser.monthlyBudget) + ' / month';
+    document.getElementById('currentTargetLabel').textContent = currentUser.spendingTarget != null
+      ? formatZAR(currentUser.spendingTarget) + ' target'
+      : 'Not set - tap to set a spending target';
+
+    loadFavourites();
+    loadBudgetLog();
+  })();
+</script>
+</body></html>

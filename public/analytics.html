@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Analytics Dashboard - EduBudget AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#85cfff",
+                        "on-primary-fixed-variant": "#6e3900",
+                        "on-secondary-fixed-variant": "#454747",
+                        "secondary": "#c6c6c7",
+                        "on-tertiary-fixed": "#001e2e",
+                        "outline-variant": "#564334",
+                        "tertiary-fixed": "#c7e7ff",
+                        "on-secondary": "#2f3131",
+                        "on-primary": "#4d2600",
+                        "surface-dim": "#17171A",
+                        "on-primary-fixed": "#2f1500",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "inverse-primary": "#904d00",
+                        "on-surface": "#e2e2e2",
+                        "surface-container-highest": "#353535",
+                        "surface-container-low": "#1b1b1b",
+                        "inverse-on-surface": "#303030",
+                        "on-error": "#690005",
+                        "glass-stroke": "rgba(255, 255, 255, 0.15)",
+                        "surface-tint": "#ffb77d",
+                        "tertiary": "#85cfff",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#2a2a2a",
+                        "error": "#ffb4ab",
+                        "on-background": "#e2e2e2",
+                        "surface-variant": "#353535",
+                        "primary-container": "#ff8c00",
+                        "on-tertiary-container": "#004360",
+                        "tertiary-container": "#00b5fc",
+                        "on-surface-variant": "#ddc1ae",
+                        "outline": "#a48c7a",
+                        "primary-fixed-dim": "#ffb77d",
+                        "on-secondary-container": "#b4b5b5",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#623200",
+                        "surface": "#1C1C1E",
+                        "background": "#1C1C1E",
+                        "primary": "#ffb77d",
+                        "primary-fixed": "#ffdcc3",
+                        "accent-glow": "rgba(255, 140, 0, 0.2)",
+                        "secondary-container": "#454747",
+                        "glass-surface": "rgba(255, 255, 255, 0.05)",
+                        "surface-bright": "#393939",
+                        "inverse-surface": "#e2e2e2",
+                        "on-tertiary-fixed-variant": "#004c6c",
+                        "surface-container": "#1f1f1f",
+                        "surface-container-lowest": "#141416",
+                        "on-tertiary": "#00344c",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "secondary-fixed": "#e2e2e2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "unit": "8px",
+                        "margin-desktop": "64px",
+                        "container-padding": "32px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #1C1C1E;
+            color: #e2e2e2;
+        }
+        .glass-panel {
+            background-color: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0.75rem;
+        }
+        .glow-active {
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row overflow-hidden bg-background">
+<!-- Mobile Top App Bar -->
+<header class="md:hidden flex justify-between items-center w-full px-margin-mobile h-16 z-50 bg-glass-surface backdrop-blur-3xl border-b border-glass-stroke shadow-none sticky top-0 full-width">
+<button class="text-primary hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">EduBudget AI</h1>
+<button class="text-primary hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-glass-stroke">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar placeholder image showing a smiling student profile photo, soft lighting, dark mode aesthetic, vibrant warm orange undertones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9rwvkL3YSpIvaOU_I4ZmvD0khrL9c6IKmM8naQYgv4JmAL95Jjmd2CP3VEHO4ZD2DHeVj1EvuguQehM_P-CWMJdPL_GukdI9w7vlIxFuD3EE0ShknMAkADNh10OHdF0YEPIpAquNlUxokbeCbX8pMOdp32TPRMCeBNY5tr9_C8ZLYOAG2JqV9SCpbeZO4YeRv_gacty0fGhHKKGGUrS7EBcboFo8lkkCzioLYfikSKmibbHob2HNxyQ"/>
+</div>
+</button>
+</header>
+<!-- Desktop Sidebar -->
+<aside class="hidden md:flex flex-col w-64 h-screen glass-panel rounded-none border-t-0 border-b-0 border-l-0 z-40 p-6">
+<div class="mb-10">
+<h1 class="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">EduBudget AI</h1>
+</div>
+<nav class="flex-1 flex flex-col gap-2">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface hover:bg-white/5 transition-colors" href="/dashboard.html">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-label-lg text-label-lg">Bank</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface hover:bg-white/5 transition-colors" href="/search.html">
+<span class="material-symbols-outlined">shopping_bag</span>
+<span class="font-label-lg text-label-lg">Shop</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl bg-primary-container/20 text-primary glow-active" href="/analytics.html">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-lg text-label-lg">Budget</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface hover:bg-white/5 transition-colors" href="/favorites.html">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-lg text-label-lg">Profile</span>
+</a>
+</nav>
+<div class="mt-auto flex items-center gap-4 px-4 py-3 rounded-xl glass-panel">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-glass-stroke">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar placeholder image showing a smiling student profile photo, soft lighting, dark mode aesthetic, vibrant warm orange undertones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkU_WW3Q4pRJAIqbKSAOswGLVbyw1wBGBr6-8y7Vq_kQSmVxEeQLmpz04AFIpEP3EytigMpTKI9Q_VYNcAXTPRZyZfJ1sN0XJZMQKeOVHPFsu1HB9X16mWBy1scf6tLuKjUyEC3wsI1Vn1PNbPFRXr3RrNhNAX5dAyFFLjwb4QyT-k5G4tpXhFIe83pqdJlOrfbxka7MDTanQb7pZsJLJmWKpYri5EQ77f3zk19FLxEOIocnxUbCZP_g"/>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface" id="sidebarUserName">...</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Student</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto p-4 md:p-8 lg:p-10 pb-24 md:pb-10 relative">
+<!-- Subtle Background Glow -->
+<div class="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>
+<div class="max-w-7xl mx-auto space-y-6">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+<div>
+<h2 class="font-headline-xl text-headline-xl text-on-surface mb-2">Analytics Overview</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Your spending patterns and AI insights for this month.</p>
+</div>
+<div class="flex gap-2">
+<select class="glass-panel px-4 py-2 text-on-surface font-label-lg text-label-lg outline-none focus:border-primary appearance-none pr-8 relative bg-transparent">
+<option class="bg-surface text-on-surface">This Month</option>
+<option class="bg-surface text-on-surface">Last Month</option>
+<option class="bg-surface text-on-surface">Year to Date</option>
+</select>
+</div>
+</div>
+<!-- Top Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Budget Health -->
+<div class="glass-panel p-6 flex flex-col relative overflow-hidden group">
+<div class="absolute -right-6 -top-6 w-32 h-32 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all"></div>
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant">Budget Health</h3>
+<span class="material-symbols-outlined text-primary">favorite</span>
+</div>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="font-headline-xl text-headline-xl text-on-surface" id="budgetHealthScore">--</span>
+<span class="font-label-lg text-label-lg text-on-surface-variant">/ 100</span>
+</div>
+<p class="font-body-md text-body-md text-tertiary" id="budgetHealthText">Loading...</p>
+</div>
+<!-- Total Spent -->
+<div class="glass-panel p-6 flex flex-col relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant">Total Spent</h3>
+<span class="material-symbols-outlined text-on-surface-variant">payments</span>
+</div>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="font-headline-xl text-headline-xl text-on-surface" id="totalSpentAmount">R 0.00</span>
+</div>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-sm">percent</span>
+<span class="font-label-sm text-label-sm" id="budgetUsedPct">0% of monthly budget used</span>
+</div>
+</div>
+<!-- AI Insights Summary -->
+<div class="glass-panel p-6 flex flex-col relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant">Active Insights</h3>
+<span class="material-symbols-outlined text-tertiary-fixed-dim">tips_and_updates</span>
+</div>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="font-headline-xl text-headline-xl text-on-surface">1</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant" id="insightTeaser">Loading insight...</p>
+</div>
+</div>
+<!-- Middle Section: Chart & Categories -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Spending Overview Chart -->
+<div class="lg:col-span-2 glass-panel p-6 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-lg text-headline-lg text-on-surface">Spending Overview</h3>
+<button class="p-2 rounded-lg glass-panel hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-on-surface">more_horiz</span>
+</button>
+</div>
+<div class="flex-1 min-h-[300px] w-full relative flex items-end pb-8 px-4 gap-2">
+<!-- CSS mock bar chart -->
+<div class="absolute bottom-8 left-4 right-4 h-[1px] bg-glass-stroke z-0"></div>
+<div class="absolute bottom-[40%] left-4 right-4 h-[1px] bg-glass-stroke border-dashed z-0"></div>
+<div class="absolute bottom-[70%] left-4 right-4 h-[1px] bg-glass-stroke border-dashed z-0"></div>
+<!-- Bars -->
+<div class="flex-1 flex flex-col justify-end items-center z-10 group relative">
+<div class="w-full max-w-[40px] bg-surface-variant rounded-t-lg group-hover:bg-primary-container transition-colors" id="bar-Mon" style="height: 2%"></div>
+<span class="absolute -bottom-6 font-label-sm text-label-sm text-on-surface-variant">Mon</span>
+</div>
+<div class="flex-1 flex flex-col justify-end items-center z-10 group relative">
+<div class="w-full max-w-[40px] bg-surface-variant rounded-t-lg group-hover:bg-primary-container transition-colors" id="bar-Tue" style="height: 2%"></div>
+<span class="absolute -bottom-6 font-label-sm text-label-sm text-on-surface-variant">Tue</span>
+</div>
+<div class="flex-1 flex flex-col justify-end items-center z-10 group relative">
+<div class="w-full max-w-[40px] bg-surface-variant rounded-t-lg group-hover:bg-primary-container transition-colors" id="bar-Wed" style="height: 2%"></div>
+<span class="absolute -bottom-6 font-label-sm text-label-sm text-on-surface-variant">Wed</span>
+</div>
+<div class="flex-1 flex flex-col justify-end items-center z-10 group relative">
+<div class="w-full max-w-[40px] bg-surface-variant rounded-t-lg group-hover:bg-primary-container transition-colors" id="bar-Thu" style="height: 2%"></div>
+<span class="absolute -bottom-6 font-label-sm text-label-sm text-on-surface-variant">Thu</span>
+</div>
+<div class="flex-1 flex flex-col justify-end items-center z-10 group relative">
+<div class="w-full max-w-[40px] bg-surface-variant rounded-t-lg group-hover:bg-primary-container transition-colors" id="bar-Fri" style="height: 2%"></div>
+<span class="absolute -bottom-6 font-label-sm text-label-sm text-on-surface-variant">Fri</span>
+</div>
+<div class="flex-1 flex flex-col justify-end items-center z-10 group relative">
+<div class="w-full max-w-[40px] bg-surface-variant rounded-t-lg group-hover:bg-primary-container transition-colors" id="bar-Sat" style="height: 2%"></div>
+<span class="absolute -bottom-6 font-label-sm text-label-sm text-on-surface-variant">Sat</span>
+</div>
+<div class="flex-1 flex flex-col justify-end items-center z-10 group relative">
+<div class="w-full max-w-[40px] bg-surface-variant rounded-t-lg group-hover:bg-primary-container transition-colors" id="bar-Sun" style="height: 2%"></div>
+<span class="absolute -bottom-6 font-label-sm text-label-sm text-on-surface-variant">Sun</span>
+</div>
+</div>
+</div>
+<!-- Top Categories Breakdown -->
+<div class="glass-panel p-6 flex flex-col">
+<h3 class="font-headline-lg text-headline-lg text-on-surface mb-6">Top Categories</h3>
+<div class="space-y-6 flex-1 flex flex-col justify-center" id="categoriesContainer">
+<p class="text-on-surface-variant font-body-md">Loading...</p>
+</div>
+</div>
+</div>
+<!-- Recent Insights Cards -->
+<div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface mb-4">Recent AI Insights</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Insight 1: real, generated from your actual spending -->
+<div class="glass-panel p-5 flex gap-4 items-start border-l-4 border-l-primary hover:bg-white/5 transition-colors cursor-pointer group">
+<div class="p-2 rounded-lg bg-primary-container/20 text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1">AI Insight</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-2" id="fullInsightText">Loading...</p>
+</div>
+</div>
+<!-- Insight 2: a general (non-personalised) budgeting tip -->
+<div class="glass-panel p-5 flex gap-4 items-start hover:bg-white/5 transition-colors cursor-pointer group">
+<div class="p-2 rounded-lg bg-surface-container-highest text-on-surface group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">lightbulb</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1">General Tip</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-2">Compare prices across at least two stores on the Shop page before buying anything big-ticket - the AI recommendation there factors your budget in automatically.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile Bottom Nav Bar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-glass-surface backdrop-blur-3xl border-t border-glass-stroke shadow-none rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95" href="/dashboard.html">
+<span class="material-symbols-outlined mb-1">account_balance</span>
+<span class="font-label-sm text-label-sm">Bank</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95" href="/search.html">
+<span class="material-symbols-outlined mb-1">shopping_bag</span>
+<span class="font-label-sm text-label-sm">Shop</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container/20 text-primary rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95" href="/analytics.html">
+<span class="material-symbols-outlined mb-1">insights</span>
+<span class="font-label-sm text-label-sm">Budget</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95" href="/favorites.html">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<script src="/shared.js"></script>
+<script>
+  (async () => {
+    const user = await requireAuthOrRedirect();
+    if (!user) return;
+    document.getElementById('sidebarUserName').textContent = user.name;
+
+    const resp = await fetch('/api/analytics');
+    const data = await resp.json();
+    if (data.error) {
+      document.getElementById('budgetHealthText').textContent = 'Failed to load: ' + data.error;
+      return;
+    }
+
+    document.getElementById('budgetHealthScore').textContent = data.budgetHealth;
+    document.getElementById('budgetHealthText').textContent =
+      data.budgetHealth >= 70 ? 'Good status - you are managing your budget well.' :
+      data.budgetHealth >= 40 ? 'Caution - your spending is using up a large share of your budget.' :
+      'Over budget or close to it - consider reviewing recent purchases.';
+
+    document.getElementById('totalSpentAmount').textContent = formatZAR(data.totalSpent);
+    const pctUsed = data.monthlyBudget > 0 ? Math.round((data.totalSpent / data.monthlyBudget) * 100) : 0;
+    document.getElementById('budgetUsedPct').textContent = pctUsed + '% of monthly budget used';
+
+    document.getElementById('insightTeaser').textContent = data.insight;
+    document.getElementById('fullInsightText').textContent = data.insight;
+
+    // Bar chart: real spend per day (last 7 days), scaled to the highest day.
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const byDay = {};
+    (data.byDay || []).forEach(d => { byDay[d.day.trim()] = Number(d.total); });
+    const maxDay = Math.max(1, ...days.map(d => byDay[d] || 0));
+    days.forEach(d => {
+      const val = byDay[d] || 0;
+      const pct = Math.max(2, Math.round((val / maxDay) * 100));
+      const bar = document.getElementById('bar-' + d);
+      bar.style.height = pct + '%';
+      if (val === maxDay && val > 0) { bar.classList.add('bg-primary', 'glow-active'); bar.classList.remove('bg-surface-variant'); }
+    });
+
+    // Top categories - real, from your logged budget entries.
+    const iconMap = { food: 'restaurant', transport: 'commute', books: 'menu_book', accommodation: 'home', other: 'category' };
+    const colorClasses = [
+      { wrap: 'bg-primary-container/20 text-primary', bar: 'bg-primary glow-active' },
+      { wrap: 'bg-tertiary-fixed-dim/20 text-tertiary-fixed-dim', bar: 'bg-tertiary-fixed-dim' },
+      { wrap: 'bg-secondary-container text-on-surface', bar: 'bg-secondary' },
+    ];
+    const catContainer = document.getElementById('categoriesContainer');
+    const cats = data.byCategory || [];
+    if (cats.length === 0) {
+      catContainer.innerHTML = '<p class="text-on-surface-variant font-body-md">No spending logged yet - add entries on the Profile page.</p>';
+    } else {
+      const total = cats.reduce((s, c) => s + Number(c.total), 0);
+      catContainer.innerHTML = cats.slice(0, 3).map((c, i) => {
+        const pct = total > 0 ? Math.round((Number(c.total) / total) * 100) : 0;
+        const cc = colorClasses[i];
+        const icon = iconMap[(c.category || '').toLowerCase()] || 'category';
+        return `
+          <div>
+            <div class="flex justify-between items-end mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full ${cc.wrap} flex items-center justify-center">
+                  <span class="material-symbols-outlined text-sm">${icon}</span>
+                </div>
+                <span class="font-label-lg text-label-lg text-on-surface">${c.category}</span>
+              </div>
+              <span class="font-label-sm text-label-sm text-on-surface-variant">${pct}%</span>
+            </div>
+            <div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+              <div class="h-full ${cc.bar} rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  })();
+</script>
+</body></html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>EduBudget AI - Login / Registration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e2e2e2",
+                        "primary-fixed": "#ffdcc3",
+                        "on-tertiary": "#00344c",
+                        "surface-container-lowest": "#0e0e0e",
+                        "surface-tint": "#ffb77d",
+                        "on-tertiary-fixed": "#001e2e",
+                        "surface-dim": "#131313",
+                        "outline-variant": "#564334",
+                        "surface-container-low": "#1b1b1b",
+                        "on-primary": "#4d2600",
+                        "on-tertiary-fixed-variant": "#004c6c",
+                        "on-error": "#690005",
+                        "surface-variant": "#353535",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "primary": "#ffb77d",
+                        "glass-stroke": "rgba(255, 255, 255, 0.15)",
+                        "on-error-container": "#ffdad6",
+                        "background": "#131313",
+                        "on-tertiary-container": "#004360",
+                        "surface-container": "#1f1f1f",
+                        "tertiary-fixed-dim": "#85cfff",
+                        "error": "#ffb4ab",
+                        "on-primary-container": "#623200",
+                        "secondary-fixed": "#e2e2e2",
+                        "primary-fixed-dim": "#ffb77d",
+                        "accent-glow": "rgba(255, 140, 0, 0.2)",
+                        "primary-container": "#ff8c00",
+                        "inverse-primary": "#904d00",
+                        "inverse-surface": "#e2e2e2",
+                        "tertiary-container": "#00b5fc",
+                        "error-container": "#93000a",
+                        "on-surface-variant": "#ddc1ae",
+                        "surface-bright": "#393939",
+                        "secondary-container": "#454747",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-secondary": "#2f3131",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "surface-container-highest": "#353535",
+                        "glass-surface": "rgba(255, 255, 255, 0.05)",
+                        "surface-container-high": "#2a2a2a",
+                        "surface": "#131313",
+                        "tertiary-fixed": "#c7e7ff",
+                        "secondary": "#c6c6c7",
+                        "tertiary": "#85cfff",
+                        "on-primary-fixed-variant": "#6e3900",
+                        "on-secondary-container": "#b4b5b5",
+                        "on-surface": "#e2e2e2",
+                        "on-primary-fixed": "#2f1500",
+                        "outline": "#a48c7a",
+                        "inverse-on-surface": "#303030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "unit": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-padding": "32px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #1C1C1E;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(255, 140, 0, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(255, 140, 0, 0.03), transparent 25%);
+            background-attachment: fixed;
+        }
+
+        .glass-panel {
+            background-color: rgba(255, 255, 255, 0.05); /* glass-surface */
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border: 1px solid rgba(255, 255, 255, 0.15); /* glass-stroke */
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-input {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .glass-input:focus {
+            border-color: #ff8c00; /* primary-container */
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.2); /* accent-glow */
+            outline: none;
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-primary {
+            background-color: #ff8c00; /* primary-container */
+            color: #ffffff;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 4px 12px rgba(255, 140, 0, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 6px 16px rgba(255, 140, 0, 0.4);
+            filter: brightness(1.1);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #e2e2e2;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Toggle animation classes */
+        .form-container {
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .hidden-form {
+            opacity: 0;
+            pointer-events: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            transform: scale(0.95);
+        }
+        .active-form {
+            opacity: 1;
+            pointer-events: auto;
+            position: relative;
+            transform: scale(1);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="text-on-background min-h-screen flex flex-col items-center justify-center p-margin-mobile md:p-margin-desktop overflow-hidden">
+<!-- Decorative background elements -->
+<div class="fixed top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-primary-container opacity-[0.03] blur-[100px] pointer-events-none"></div>
+<div class="fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-primary-container opacity-[0.02] blur-[120px] pointer-events-none"></div>
+<main class="w-full max-w-md lg:max-w-lg relative z-10">
+<!-- Header area, kept outside forms to remain static -->
+<div class="text-center mb-10">
+<h1 class="font-headline-xl text-headline-xl mb-3 text-on-surface">EduBudget AI</h1>
+<p class="font-body-lg text-body-lg text-secondary">Intelligent financial planning for students.</p>
+</div>
+<div class="glass-panel rounded-2xl p-container-padding md:p-10 relative min-h-[450px] backdrop-blur-[40px]">
+<!-- Login Form -->
+<div class="form-container active-form" id="login-form">
+<h2 class="font-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-headline-lg-mobile mb-8 text-on-surface">Welcome Back</h2>
+<p id="login-error" class="hidden text-sm text-error mb-4"></p>
+<form class="space-y-6" id="loginFormEl">
+<div>
+<label class="block font-label-lg text-label-lg mb-2 text-on-surface" for="login-email">Email Address</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface" style="font-variation-settings: &quot;FILL&quot; 0;">mail</span>
+<input class="glass-input w-full rounded-3xl py-4 pl-12 pr-4 font-body-md text-body-md placeholder-white/50 text-on-surface" id="login-email" placeholder="student@university.edu" required="" type="email">
+</div>
+</div>
+<div>
+<div class="flex justify-between items-center mb-2">
+<label class="block font-label-lg text-label-lg text-on-surface" for="login-password">Password</label>
+<a class="font-label-sm text-label-sm text-primary hover:underline" href="#">Forgot?</a>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface" style="font-variation-settings: &quot;FILL&quot; 0;">lock</span>
+<input class="glass-input w-full rounded-3xl py-4 pl-12 pr-4 font-body-md text-body-md placeholder-white/50 text-on-surface" id="login-password" placeholder="••••••••" required="" type="password">
+</div>
+</div>
+<div class="pt-6 space-y-5">
+<button class="btn-primary w-full rounded-full py-4 font-label-lg text-label-lg flex items-center justify-center gap-2" type="submit">
+<span class="">Sign In</span>
+<span class="material-symbols-outlined text-[20px] text-on-surface">arrow_forward</span>
+</button>
+<div class="text-center mt-4">
+<span class="font-body-md text-body-md text-on-surface">New to EduBudget AI? </span>
+<button class="font-label-lg text-label-lg text-primary hover:underline ml-1" id="show-register" type="button">Create Account</button>
+</div>
+</div>
+</form>
+</div>
+<!-- Registration Form -->
+<div class="form-container hidden-form" id="register-form">
+<h2 class="font-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-headline-lg-mobile mb-8 text-on-surface">Create Account</h2>
+<p id="register-error" class="hidden text-sm text-error mb-4"></p>
+<form class="space-y-6" id="registerFormEl">
+<div>
+<label class="block font-label-lg text-label-lg mb-2 text-on-surface" for="reg-name">Full Name</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface" style="font-variation-settings: &quot;FILL&quot; 0;">person</span>
+<input class="glass-input w-full rounded-3xl py-4 pl-12 pr-4 font-body-md text-body-md placeholder-white/50 text-on-surface" id="reg-name" placeholder="Alex Chen" required="" type="text">
+</div>
+</div>
+<div>
+<label class="block font-label-lg text-label-lg mb-2 text-on-surface" for="reg-email">Email Address</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface" style="font-variation-settings: &quot;FILL&quot; 0;">mail</span>
+<input class="glass-input w-full rounded-3xl py-4 pl-12 pr-4 font-body-md text-body-md placeholder-white/50 text-on-surface" id="reg-email" placeholder="student@university.edu" required="" type="email">
+</div>
+</div>
+<div>
+<label class="block font-label-lg text-label-lg mb-2 text-on-surface" for="reg-password">Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface" style="font-variation-settings: &quot;FILL&quot; 0;">lock</span>
+<input class="glass-input w-full rounded-3xl py-4 pl-12 pr-4 font-body-md text-body-md placeholder-white/50 text-on-surface" id="reg-password" placeholder="Create a secure password" required="" type="password">
+</div>
+</div>
+<div>
+<label class="block font-label-lg text-label-lg mb-2 text-on-surface" for="reg-password-confirm">Re-enter Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface" style="font-variation-settings: &quot;FILL&quot; 0;">verified_user</span>
+<input class="glass-input w-full rounded-3xl py-4 pl-12 pr-4 font-body-md text-body-md placeholder-white/50 text-on-surface" id="reg-password-confirm" placeholder="Confirm your password" required="" type="password">
+</div>
+</div>
+<div class="pt-6 space-y-5">
+<button class="btn-primary w-full rounded-full py-4 font-label-lg text-label-lg flex items-center justify-center gap-2" type="submit">
+<span class="">Register</span>
+<span class="material-symbols-outlined text-[20px] text-on-surface">person_add</span>
+</button>
+<div class="text-center mt-4">
+<span class="font-body-md text-body-md text-on-surface">Already have an account? </span>
+<button class="font-label-lg text-label-lg text-primary hover:underline ml-1" id="show-login" type="button">Sign In</button>
+</div>
+</div>
+</form>
+</div>
+</div>
+<div class="mt-10 text-center">
+<p class="font-label-sm text-label-sm text-secondary">By continuing, you agree to our <a class="text-primary hover:underline" href="#">Terms of Service</a> and <a class="text-primary hover:underline" href="#">Privacy Policy</a>.</p>
+</div>
+</main>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const showRegisterBtn = document.getElementById('show-register');
+            const showLoginBtn = document.getElementById('show-login');
+
+            showRegisterBtn.addEventListener('click', () => {
+                loginForm.classList.remove('active-form');
+                loginForm.classList.add('hidden-form');
+                
+                // Small delay to allow fade out before fading in
+                setTimeout(() => {
+                    registerForm.classList.remove('hidden-form');
+                    registerForm.classList.add('active-form');
+                }, 50);
+            });
+
+            showLoginBtn.addEventListener('click', () => {
+                registerForm.classList.remove('active-form');
+                registerForm.classList.add('hidden-form');
+                
+                setTimeout(() => {
+                    loginForm.classList.remove('hidden-form');
+                    loginForm.classList.add('active-form');
+                }, 50);
+            });
+
+            // If already logged in, skip straight to the dashboard.
+            fetch('/api/auth/me').then(r => { if (r.ok) window.location.href = '/dashboard.html'; });
+
+            function showError(elId, message) {
+                const el = document.getElementById(elId);
+                el.textContent = message;
+                el.classList.remove('hidden');
+            }
+            function hideError(elId) {
+                document.getElementById(elId).classList.add('hidden');
+            }
+
+            document.getElementById('loginFormEl').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                hideError('login-error');
+                const email = document.getElementById('login-email').value.trim();
+                const password = document.getElementById('login-password').value;
+                try {
+                    const resp = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password }),
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok) return showError('login-error', data.error || 'Login failed');
+                    window.location.href = '/dashboard.html';
+                } catch (err) {
+                    showError('login-error', 'Network error - is the server running?');
+                }
+            });
+
+            document.getElementById('registerFormEl').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                hideError('register-error');
+                const name = document.getElementById('reg-name').value.trim();
+                const email = document.getElementById('reg-email').value.trim();
+                const password = document.getElementById('reg-password').value;
+                const confirm = document.getElementById('reg-password-confirm').value;
+                if (password !== confirm) return showError('register-error', 'Passwords do not match');
+                if (password.length < 8) return showError('register-error', 'Password must be at least 8 characters');
+                try {
+                    const resp = await fetch('/api/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email, password }),
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok) return showError('register-error', data.error || 'Registration failed');
+                    window.location.href = '/dashboard.html';
+                } catch (err) {
+                    showError('register-error', 'Network error - is the server running?');
+                }
+            });
+        });
+    </script>
+
+
+</body></html>

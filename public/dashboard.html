@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduBudget AI - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e2e2e2",
+                        "primary-fixed": "#ffdcc3",
+                        "on-tertiary": "#00344c",
+                        "surface-container-lowest": "#141416",
+                        "surface-tint": "#ffb77d",
+                        "on-tertiary-fixed": "#001e2e",
+                        "surface-dim": "#17171A",
+                        "outline-variant": "#564334",
+                        "surface-container-low": "#1b1b1b",
+                        "on-primary": "#4d2600",
+                        "on-tertiary-fixed-variant": "#004c6c",
+                        "on-error": "#690005",
+                        "surface-variant": "#353535",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "primary": "#ffb77d",
+                        "glass-stroke": "rgba(255, 255, 255, 0.15)",
+                        "on-error-container": "#ffdad6",
+                        "background": "#1C1C1E",
+                        "on-tertiary-container": "#004360",
+                        "surface-container": "#1f1f1f",
+                        "tertiary-fixed-dim": "#85cfff",
+                        "error": "#ffb4ab",
+                        "on-primary-container": "#623200",
+                        "secondary-fixed": "#e2e2e2",
+                        "primary-fixed-dim": "#ffb77d",
+                        "accent-glow": "rgba(255, 140, 0, 0.2)",
+                        "primary-container": "#ff8c00",
+                        "inverse-primary": "#904d00",
+                        "inverse-surface": "#e2e2e2",
+                        "tertiary-container": "#00b5fc",
+                        "error-container": "#93000a",
+                        "on-surface-variant": "#ddc1ae",
+                        "surface-bright": "#393939",
+                        "secondary-container": "#454747",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-secondary": "#2f3131",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "surface-container-highest": "#353535",
+                        "glass-surface": "rgba(255, 255, 255, 0.05)",
+                        "surface-container-high": "#2a2a2a",
+                        "surface": "#1C1C1E",
+                        "tertiary-fixed": "#c7e7ff",
+                        "secondary": "#c6c6c7",
+                        "tertiary": "#85cfff",
+                        "on-primary-fixed-variant": "#6e3900",
+                        "on-secondary-container": "#b4b5b5",
+                        "on-surface": "#e2e2e2",
+                        "on-primary-fixed": "#2f1500",
+                        "outline": "#a48c7a",
+                        "inverse-on-surface": "#303030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "unit": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-padding": "32px",
+                        "safe": "env(safe-area-inset-bottom)"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-md": ["Plus Jakarta Sans", "sans-serif"],
+                        "label-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-xl": ["Plus Jakarta Sans", "sans-serif"],
+                        "label-sm": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #1C1C1E;
+            color: #e2e2e2;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .glow-accent {
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.2);
+        }
+
+        .glass-input:focus {
+            border-color: #ffb77d;
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.2);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-24 md:pb-0 flex">
+<!-- Desktop Sidebar -->
+<aside class="hidden md:flex flex-col w-64 border-r border-glass-stroke bg-surface-container-lowest/80 backdrop-blur-3xl sticky top-0 h-screen p-6 z-40">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface mb-10 pl-2">EduBudget AI</h1>
+<nav class="flex-1 space-y-4">
+<a class="flex items-center gap-4 bg-primary-container/20 text-on-surface p-3 rounded-xl shadow-[0_0_15px_rgba(255,140,0,0.3)] transition-transform" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="account_balance" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+<span class="font-label-lg">Bank</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/search.html">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-lg">Shop</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/analytics.html">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-label-lg">Budget</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/favorites.html">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-lg">Profile</span>
+</a>
+</nav>
+</aside>
+<div class="flex-1 flex flex-col min-w-0">
+<!-- TopAppBar -->
+<header class="bg-glass-surface dark:bg-glass-surface text-primary dark:text-primary docked full-width top-0 sticky backdrop-blur-3xl border-b border-glass-stroke shadow-none flex justify-between items-center w-full px-margin-mobile h-16 z-50 md:px-margin-desktop md:justify-end">
+<button class="text-on-surface hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform md:hidden">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface md:hidden">EduBudget AI</h1>
+<div class="flex items-center gap-4">
+<button class="w-8 h-8 rounded-full overflow-hidden border border-glass-stroke scale-95 active:scale-90 transition-transform">
+<img class="w-full h-full object-cover" data-alt="A close up portrait of a modern university student with a subtle smile, glowing orange rim lighting, dark moody background, high resolution, cyberpunk glassmorphism aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBerBatIkiZoAWgUeuUHuXCLmLy_6cYKaHz3i_0YO-J1DnR6WC3fNH_C1ZERvXIWRAeLCAZaN309qBs3cfY2F2JGVKDw5N0QJEISTz3Zn3qQDoGaCgQD0CNRTbf4Jr2tAdcUz8RpTubRgUEtn6xWNIXG-MwECZ-68CMGfLEZg-31DrCqgL0lXstj3mFOj_4GPtlY6uCexe4b-hln5eT0Jm7WPDClMQfgz-LmJ-tjCvkdVsT2Rlg1hAvcw"/>
+</button>
+</div>
+</header>
+<main class="max-w-7xl w-full mx-auto px-margin-mobile md:px-margin-desktop py-gutter space-y-gutter flex-1">
+<!-- Search Bar -->
+<div class="relative glass-panel rounded-3xl p-1 flex items-center mb-8 backdrop-blur-3xl max-w-2xl mx-auto md:mx-0">
+<span class="material-symbols-outlined text-on-surface-variant ml-4" data-icon="search">search</span>
+<input class="w-full bg-transparent border-none text-on-surface font-body-md placeholder-on-surface-variant glass-input rounded-3xl py-3 px-4 focus:ring-0" id="topSearchInput" placeholder="Search deals, transactions..." type="text"/>
+<button class="bg-primary text-on-primary rounded-full px-6 py-2 font-label-lg mx-1 hover:bg-surface-tint transition-colors shadow-none glow-accent" id="topSearchBtn">Find</button>
+</div>
+<!-- Dashboard Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Main Balance Card -->
+<div class="col-span-1 md:col-span-8 glass-panel rounded-2xl p-container-padding relative overflow-hidden group backdrop-blur-3xl min-h-[300px]">
+<!-- Decorative glow -->
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary-container rounded-full blur-[80px] opacity-20 group-hover:opacity-30 transition-opacity duration-700"></div>
+<div class="relative z-10 flex flex-col h-full justify-between">
+<div>
+<p class="font-label-lg uppercase tracking-wider mb-2 text-on-surface">Available Balance</p>
+<h2 class="font-headline-xl text-primary mb-1" id="balanceAmount">R 0.00</h2>
+<p class="font-body-md text-on-surface">of <span id="monthlyBudgetAmount">R 0.00</span> monthly allowance</p>
+</div>
+<div class="mt-8">
+<div class="flex justify-between items-end mb-2">
+<p class="font-label-sm text-on-surface" id="daysLeftLabel">-- Days Left</p>
+<p class="font-label-sm text-error" id="spentLabel">R 0.00 spent</p>
+</div>
+<div class="w-full bg-surface-container-high rounded-full h-2">
+<div class="bg-primary h-2 rounded-full glow-accent" id="balanceBar" style="width: 0%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Stats -->
+<div class="col-span-1 md:col-span-4 grid grid-cols-2 md:grid-cols-1 gap-gutter">
+<div class="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center text-center backdrop-blur-3xl md:h-[138px]">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center mb-3 text-primary border border-primary/20">
+<span class="material-symbols-outlined" id="stat1Icon">restaurant</span>
+</div>
+<p class="font-headline-lg-mobile text-on-surface mb-1" id="stat1Amount">R 0</p>
+<p class="font-label-sm text-on-surface" id="stat1Label">No spending yet</p>
+</div>
+<div class="glass-panel rounded-2xl p-6 flex flex-col justify-center items-center text-center backdrop-blur-3xl md:h-[138px]">
+<div class="w-12 h-12 rounded-full bg-tertiary-container/10 flex items-center justify-center mb-3 text-tertiary-container border border-tertiary-container/20">
+<span class="material-symbols-outlined" id="stat2Icon">local_taxi</span>
+</div>
+<p class="font-headline-lg-mobile text-on-surface mb-1" id="stat2Amount">R 0</p>
+<p class="font-label-sm text-on-surface" id="stat2Label">No spending yet</p>
+</div>
+</div>
+</div>
+<!-- Trending Deals Section -->
+<div class="mt-12">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-lg-mobile text-on-surface">Trending Student Deals</h3>
+<span class="font-label-sm text-on-surface-variant" id="dealsCacheNote"></span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter" id="dealsContainer">
+<p class="text-on-surface-variant col-span-3">Loading real deals...</p>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden bg-glass-surface dark:bg-glass-surface text-primary dark:text-primary font-label-sm text-label-sm fixed bottom-0 w-full rounded-t-xl backdrop-blur-3xl border-t border-glass-stroke shadow-none left-0 z-50 flex justify-around items-center px-4 py-2 pb-safe bg-surface-container-lowest">
+<button class="flex flex-col items-center justify-center bg-primary-container/20 rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/dashboard.html'">
+<span class="material-symbols-outlined mb-1" data-icon="account_balance" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+<span class="">Bank</span>
+</button>
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/search.html'">
+<span class="material-symbols-outlined mb-1" data-icon="shopping_bag">shopping_bag</span>
+<span class="">Shop</span>
+</button>
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/analytics.html'">
+<span class="material-symbols-outlined mb-1" data-icon="insights">insights</span>
+<span class="">Budget</span>
+</button>
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/favorites.html'">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="">Profile</span>
+</button>
+</nav>
+<script src="/shared.js"></script>
+<script>
+  (async () => {
+    const user = await requireAuthOrRedirect();
+    if (!user) return;
+
+    const [dashResp, analyticsResp, dealsResp] = await Promise.all([
+      fetch('/api/dashboard'),
+      fetch('/api/analytics'),
+      fetch('/api/deals'),
+    ]);
+    const dash = await dashResp.json();
+    const analytics = await analyticsResp.json();
+    const dealsData = await dealsResp.json();
+
+    document.getElementById('balanceAmount').textContent = formatZAR(dash.remaining);
+    document.getElementById('monthlyBudgetAmount').textContent = formatZAR(dash.monthlyBudget);
+    document.getElementById('spentLabel').textContent = formatZAR(dash.totalSpent) + ' spent';
+    const pct = dash.monthlyBudget > 0 ? Math.min(100, Math.round((dash.totalSpent / dash.monthlyBudget) * 100)) : 0;
+    document.getElementById('balanceBar').style.width = pct + '%';
+
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    document.getElementById('daysLeftLabel').textContent = (lastDay - now.getDate()) + ' Days Left';
+
+    const iconMap = { food: 'restaurant', transport: 'local_taxi', books: 'menu_book', accommodation: 'home', other: 'category' };
+    const cats = (analytics.byCategory || []).slice(0, 2);
+    [1, 2].forEach((n, i) => {
+      const c = cats[i];
+      const icon = document.getElementById('stat' + n + 'Icon');
+      const amount = document.getElementById('stat' + n + 'Amount');
+      const label = document.getElementById('stat' + n + 'Label');
+      if (c) {
+        icon.textContent = iconMap[(c.category || '').toLowerCase()] || 'category';
+        amount.textContent = formatZAR(c.total);
+        label.textContent = c.category;
+      }
+    });
+
+    document.getElementById('dealsCacheNote').textContent = dealsData.cacheNote ? '(cached results)' : '';
+    const dealsContainer = document.getElementById('dealsContainer');
+    if (!dealsData.deals || dealsData.deals.length === 0) {
+      dealsContainer.innerHTML = '<p class="text-on-surface-variant col-span-3">No cached deals yet - ask your developer to run `npm run refresh-deals`.</p>';
+    } else {
+      dealsContainer.innerHTML = dealsData.deals.slice(0, 3).map(d => `
+        <div class="glass-panel rounded-2xl overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300 backdrop-blur-3xl">
+          <div class="h-40 md:h-48 relative">
+            <img class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" src="${d.thumbnail || ''}" onerror="this.style.display='none'"/>
+            <div class="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
+            <div class="absolute top-3 right-3 bg-primary text-on-primary font-label-sm px-3 py-1 rounded-full glow-accent">${d.price_text || ''}</div>
+          </div>
+          <div class="p-6 relative z-10 -mt-6">
+            <h4 class="font-body-lg text-on-surface mb-1 font-bold">${d.title || 'Untitled'}</h4>
+            <p class="font-body-md mb-4 text-on-surface">${d.source || ''} &middot; ${d.query_label || ''}</p>
+            <a class="block text-center w-full py-2 rounded-lg border border-glass-stroke text-primary font-label-lg hover:bg-glass-surface transition-colors" href="${d.link || '#'}" target="_blank">View Deal</a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function goSearch() {
+      const q = document.getElementById('topSearchInput').value.trim();
+      window.location.href = '/search.html' + (q ? '?q=' + encodeURIComponent(q) : '');
+    }
+    document.getElementById('topSearchBtn').addEventListener('click', goSearch);
+    document.getElementById('topSearchInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') goSearch(); });
+  })();
+</script>
+</body></html>

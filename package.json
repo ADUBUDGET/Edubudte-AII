@@ -1,0 +1,21 @@
+{
+  "name": "edubudget-ai",
+  "version": "2.0.0",
+  "description": "EduBudget AI - real accounts, real product search, AI recommendations, budget tracking",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "refresh-deals": "node scripts/refresh-deals.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "groq-sdk": "^0.7.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
