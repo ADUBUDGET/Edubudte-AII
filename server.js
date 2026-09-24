@@ -574,10 +574,147 @@ Recommend the single best travel option and explain briefly (max 60 words). Weig
   }
 });
 
+// ---------------------------------------------------------------
+// EDUCHATBOT: budget-aware chat assistant, history saved per user
+// ---------------------------------------------------------------
+// Created separately from initSchema() so it is never dropped/recreated.
+// user_id is TEXT (no foreign key) so it works whatever type users.id is.
+async function ensureChatSchema() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS chat_messages_user_idx ON chat_messages (user_id, id)`;
+}
+
+// Protects your free Groq quota: 15 chat messages per IP per minute.
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  message: { error: "You're sending messages too fast. Please wait a moment." },
+});
+
+function buildChatSystemPrompt({ monthlyBudget, totalSpent, categories }) {
+  const remaining = monthlyBudget - totalSpent;
+  const categoryLine = categories.length
+    ? categories.map(c => `${c.category}: R${Number(c.total).toFixed(2)}`).join(", ")
+    : "no purchases logged yet";
+
+  return `
+You are EduChatBot, the friendly money assistant inside EduBudget AI, an app for South African students.
+
+Personality and style:
+- Warm, casual, encouraging, like a smart friend who is good with money. Keep replies short (under 120 words) unless the user asks for a plan or a list.
+- You can chat about normal things (studying, stress, daily life). Answer naturally, and only bring the conversation back to money when it is useful. Never lecture.
+- Use South African Rand (R) for every amount.
+- Formatting: plain text only. No markdown: no asterisks, no # headings, no tables. For lists, start each line with a hyphen.
+
+Money help:
+- Use the user's real numbers below for budget advice. Never invent facts about their finances. If you need more information (income, rent, number of people to feed), ask ONE short question.
+- Budget planning: suggest simple splits that fit student life (rent, food, transport, data, study costs, savings) and adjust to what the user tells you.
+- Grocery lists: keep the total under the amount the user gives you (or a sensible share of their remaining budget). Show each item with an approximate price in Rand and a total. Prefer cheap staples and stores like Shoprite, Checkers, Pick n Pay, Spar or Boxer. Say clearly that prices are estimates.
+- You are not a licensed financial advisor. Do not recommend loans, credit, crypto or gambling. If the user seems to be in serious financial trouble, encourage them to talk to their university's financial aid or student support office.
+
+The user's current numbers:
+- Monthly budget: R${monthlyBudget.toFixed(2)}
+- Spent so far: R${totalSpent.toFixed(2)}
+- Remaining: R${remaining.toFixed(2)}
+- Spending by category: ${categoryLine}
+`.trim();
+}
+
+app.post("/api/chat", requireAuth, chatLimiter, async (req, res) => {
+  try {
+    const message = typeof req.body.message === "string" ? req.body.message.trim() : "";
+    if (!message) return res.status(400).json({ error: "message is required" });
+    if (message.length > 1000) {
+      return res.status(400).json({ error: "Message is too long (max 1000 characters)." });
+    }
+    const uid = String(req.userId);
+
+    // Same numbers the Dashboard uses, so the bot and the app always agree.
+    const [user] = await sql`SELECT monthly_budget FROM users WHERE id = ${req.userId}`;
+    const [{ total_spent }] = await sql`
+      SELECT COALESCE(SUM(amount), 0) AS total_spent FROM budget_log WHERE user_id = ${req.userId}
+    `;
+    const categories = await sql`
+      SELECT category, SUM(amount) AS total
+      FROM budget_log WHERE user_id = ${req.userId}
+      GROUP BY category ORDER BY total DESC LIMIT 5
+    `;
+
+    // Last 10 messages give the bot conversation memory.
+    const recent = await sql`
+      SELECT role, content FROM chat_messages
+      WHERE user_id = ${uid} ORDER BY id DESC LIMIT 10
+    `;
+    const history = recent.reverse();
+
+    const systemPrompt = buildChatSystemPrompt({
+      monthlyBudget: Number(user?.monthly_budget) || 0,
+      totalSpent: Number(total_spent),
+      categories,
+    });
+
+    const completion = await groq.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...history.map(m => ({ role: m.role, content: m.content })),
+        { role: "user", content: message },
+      ],
+      temperature: 0.6,
+      max_tokens: 1500,
+    });
+    const reply =
+      completion.choices[0]?.message?.content?.trim() ||
+      "Sorry, I couldn't come up with a reply. Try asking again?";
+
+    // Save both messages only after Groq succeeded.
+    await sql`INSERT INTO chat_messages (user_id, role, content) VALUES (${uid}, 'user', ${message})`;
+    await sql`INSERT INTO chat_messages (user_id, role, content) VALUES (${uid}, 'assistant', ${reply})`;
+
+    res.json({ reply });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "EduChatBot had a problem. Please try again.", detail: err.message });
+  }
+});
+
+app.get("/api/chat/history", requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT role, content FROM (
+        SELECT id, role, content FROM chat_messages
+        WHERE user_id = ${String(req.userId)} ORDER BY id DESC LIMIT 50
+      ) t ORDER BY id ASC
+    `;
+    res.json({ messages: rows });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load chat history", detail: err.message });
+  }
+});
+
+app.delete("/api/chat/history", requireAuth, async (req, res) => {
+  try {
+    await sql`DELETE FROM chat_messages WHERE user_id = ${String(req.userId)}`;
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: "Failed to clear chat history", detail: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
 initSchema()
+  .then(ensureChatSchema)
   .then(() => {
+    console.log("Chat table ready.");
     app.listen(PORT, () => {
       console.log(`\nEduBudget AI running at http://localhost:${PORT}\n`);
     });
