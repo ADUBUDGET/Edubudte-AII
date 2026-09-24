@@ -574,10 +574,333 @@ Recommend the single best travel option and explain briefly (max 60 words). Weig
   }
 });
 
+// ---------------------------------------------------------------
+// EDUCHATBOT: budget-aware chat assistant, history saved per user
+// ---------------------------------------------------------------
+// Created separately from initSchema() so it is never dropped/recreated.
+// user_id is TEXT (no foreign key) so it works whatever type users.id is.
+async function ensureChatSchema() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS chat_messages_user_idx ON chat_messages (user_id, id)`;
+}
+
+// Protects your free Groq quota: 15 chat messages per IP per minute.
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  message: { error: "You're sending messages too fast. Please wait a moment." },
+});
+
+function buildChatSystemPrompt({ monthlyBudget, totalSpent, categories }) {
+  const remaining = monthlyBudget - totalSpent;
+  const categoryLine = categories.length
+    ? categories.map(c => `${c.category}: R${Number(c.total).toFixed(2)}`).join(", ")
+    : "no purchases logged yet";
+
+  return `
+You are EduChatBot, the friendly money assistant inside EduBudget AI, an app for South African students.
+
+Personality and style:
+- Warm, casual, encouraging, like a smart friend who is good with money. Keep replies short (under 120 words) unless the user asks for a plan or a list.
+- You can chat about normal things (studying, stress, daily life). Answer naturally, and only bring the conversation back to money when it is useful. Never lecture.
+- Use South African Rand (R) for every amount.
+- Formatting: plain text only. No markdown: no asterisks, no # headings, no tables. For lists, start each line with a hyphen.
+
+Money help:
+- Use the user's real numbers below for budget advice. Never invent facts about their finances. If you need more information (income, rent, number of people to feed), ask ONE short question.
+- Budget planning: suggest simple splits that fit student life (rent, food, transport, data, study costs, savings) and adjust to what the user tells you.
+- Grocery lists: keep the total under the amount the user gives you (or a sensible share of their remaining budget). Show each item with an approximate price in Rand and a total. Prefer cheap staples and stores like Shoprite, Checkers, Pick n Pay, Spar or Boxer. Say clearly that prices are estimates.
+- You are not a licensed financial advisor. Do not recommend loans, credit, crypto or gambling. If the user seems to be in serious financial trouble, encourage them to talk to their university's financial aid or student support office.
+
+The user's current numbers:
+- Monthly budget: R${monthlyBudget.toFixed(2)}
+- Spent so far: R${totalSpent.toFixed(2)}
+- Remaining: R${remaining.toFixed(2)}
+- Spending by category: ${categoryLine}
+`.trim();
+}
+
+app.post("/api/chat", requireAuth, chatLimiter, async (req, res) => {
+  try {
+    const message = typeof req.body.message === "string" ? req.body.message.trim() : "";
+    if (!message) return res.status(400).json({ error: "message is required" });
+    if (message.length > 1000) {
+      return res.status(400).json({ error: "Message is too long (max 1000 characters)." });
+    }
+    const uid = String(req.userId);
+
+    // Same numbers the Dashboard uses, so the bot and the app always agree.
+    const [user] = await sql`SELECT monthly_budget FROM users WHERE id = ${req.userId}`;
+    const [{ total_spent }] = await sql`
+      SELECT COALESCE(SUM(amount), 0) AS total_spent FROM budget_log WHERE user_id = ${req.userId}
+    `;
+    const categories = await sql`
+      SELECT category, SUM(amount) AS total
+      FROM budget_log WHERE user_id = ${req.userId}
+      GROUP BY category ORDER BY total DESC LIMIT 5
+    `;
+
+    // Last 10 messages give the bot conversation memory.
+    const recent = await sql`
+      SELECT role, content FROM chat_messages
+      WHERE user_id = ${uid} ORDER BY id DESC LIMIT 10
+    `;
+    const history = recent.reverse();
+
+    const systemPrompt = buildChatSystemPrompt({
+      monthlyBudget: Number(user?.monthly_budget) || 0,
+      totalSpent: Number(total_spent),
+      categories,
+    });
+
+    const completion = await groq.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...history.map(m => ({ role: m.role, content: m.content })),
+        { role: "user", content: message },
+      ],
+      temperature: 0.6,
+      max_tokens: 1500,
+    });
+    const reply =
+      completion.choices[0]?.message?.content?.trim() ||
+      "Sorry, I couldn't come up with a reply. Try asking again?";
+
+    // Save both messages only after Groq succeeded.
+    await sql`INSERT INTO chat_messages (user_id, role, content) VALUES (${uid}, 'user', ${message})`;
+    await sql`INSERT INTO chat_messages (user_id, role, content) VALUES (${uid}, 'assistant', ${reply})`;
+
+    res.json({ reply });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "EduChatBot had a problem. Please try again.", detail: err.message });
+  }
+});
+
+app.get("/api/chat/history", requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT role, content FROM (
+        SELECT id, role, content FROM chat_messages
+        WHERE user_id = ${String(req.userId)} ORDER BY id DESC LIMIT 50
+      ) t ORDER BY id ASC
+    `;
+    res.json({ messages: rows });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load chat history", detail: err.message });
+  }
+});
+
+app.delete("/api/chat/history", requireAuth, async (req, res) => {
+  try {
+    await sql`DELETE FROM chat_messages WHERE user_id = ${String(req.userId)}`;
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: "Failed to clear chat history", detail: err.message });
+  }
+});
+
+// ---------------------------------------------------------------
+// NOTIFICATIONS: in-app bell (budget alerts, store specials, new deals)
+// ---------------------------------------------------------------
+async function ensureNotificationSchema() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT,
+      link TEXT,
+      dedupe_key TEXT NOT NULL,
+      is_read BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS notifications_dedupe_idx ON notifications (user_id, dedupe_key)`;
+  await sql`CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications (user_id, id)`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS store_specials (
+      id SERIAL PRIMARY KEY,
+      store TEXT NOT NULL,
+      item TEXT NOT NULL,
+      price NUMERIC(10,2),
+      was_price NUMERIC(10,2),
+      starts_on DATE NOT NULL,
+      ends_on DATE NOT NULL,
+      note TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+}
+
+// The dedupe_key makes sure the same notification is only ever created once
+// per user (e.g. one "special on now" per special, one 80% alert per month).
+async function createNotification(userId, { type, title, body, link, dedupeKey }) {
+  await sql`
+    INSERT INTO notifications (user_id, type, title, body, link, dedupe_key)
+    VALUES (${String(userId)}, ${type}, ${title}, ${body || null}, ${link || null}, ${dedupeKey})
+    ON CONFLICT (user_id, dedupe_key) DO NOTHING
+  `;
+}
+
+async function generateBudgetNotifications(userId) {
+  const [user] = await sql`SELECT monthly_budget FROM users WHERE id = ${userId}`;
+  const [{ total_spent }] = await sql`
+    SELECT COALESCE(SUM(amount), 0) AS total_spent FROM budget_log WHERE user_id = ${userId}
+  `;
+  const budget = Number(user?.monthly_budget) || 0;
+  if (budget <= 0) return;
+  const spent = Number(total_spent);
+  const pct = (spent / budget) * 100;
+  const month = new Date().toISOString().slice(0, 7);
+
+  if (pct >= 100) {
+    await createNotification(userId, {
+      type: "budget",
+      title: "You've passed your monthly budget",
+      body: `You've spent R${spent.toFixed(2)} of your R${budget.toFixed(2)} budget. Try to hold off on non-essentials.`,
+      link: "/analytics.html",
+      dedupeKey: `budget100-${month}`,
+    });
+  } else if (pct >= 80) {
+    await createNotification(userId, {
+      type: "budget",
+      title: "You've used 80% of your budget",
+      body: `You've spent R${spent.toFixed(2)} of your R${budget.toFixed(2)} budget.`,
+      link: "/analytics.html",
+      dedupeKey: `budget80-${month}`,
+    });
+  }
+}
+
+async function generateSpecialNotifications(userId) {
+  // "today" is calculated in South African time so dates line up for students.
+  const specials = await sql`
+    SELECT id, store, item, price, was_price,
+           starts_on::text AS starts_on, ends_on::text AS ends_on,
+           (starts_on <= (NOW() AT TIME ZONE 'Africa/Johannesburg')::date) AS is_active
+    FROM store_specials
+    WHERE ends_on >= (NOW() AT TIME ZONE 'Africa/Johannesburg')::date
+      AND starts_on <= (NOW() AT TIME ZONE 'Africa/Johannesburg')::date + 3
+  `;
+  for (const s of specials) {
+    const priceText = s.price != null ? ` for R${Number(s.price).toFixed(2)}` : "";
+    const wasText = s.was_price != null ? ` (was R${Number(s.was_price).toFixed(2)})` : "";
+    if (s.is_active) {
+      await createNotification(userId, {
+        type: "special",
+        title: `Special on now at ${s.store}`,
+        body: `${s.item}${priceText}${wasText}. Ends ${s.ends_on}.`,
+        link: "/search.html",
+        dedupeKey: `special-on-${s.id}`,
+      });
+    } else {
+      await createNotification(userId, {
+        type: "special",
+        title: `Coming up at ${s.store}`,
+        body: `${s.item}${priceText}${wasText}. Starts ${s.starts_on}.`,
+        link: "/search.html",
+        dedupeKey: `special-soon-${s.id}`,
+      });
+    }
+  }
+}
+
+async function generateDealNotifications(userId) {
+  const [row] = await sql`
+    SELECT to_char(MAX(fetched_at), 'YYYY-MM-DD') AS day
+    FROM trending_deals WHERE fetched_at > NOW() - INTERVAL '7 days'
+  `;
+  if (!row?.day) return;
+  await createNotification(userId, {
+    type: "deal",
+    title: "Fresh student deals are in",
+    body: "New trending deals were added to your Dashboard.",
+    link: "/dashboard.html",
+    dedupeKey: `deals-${row.day}`,
+  });
+}
+
+app.get("/api/notifications", requireAuth, async (req, res) => {
+  try {
+    // Create any new notifications for this user first. One failing generator
+    // must never stop the others or break the bell.
+    for (const generate of [generateBudgetNotifications, generateSpecialNotifications, generateDealNotifications]) {
+      try {
+        await generate(req.userId);
+      } catch (e) {
+        console.error("Notification generator failed:", e.message);
+      }
+    }
+    const uid = String(req.userId);
+    const rows = await sql`
+      SELECT id, type, title, body, link, is_read, created_at
+      FROM notifications WHERE user_id = ${uid} ORDER BY id DESC LIMIT 30
+    `;
+    const [{ unread }] = await sql`
+      SELECT COUNT(*)::int AS unread FROM notifications WHERE user_id = ${uid} AND is_read = FALSE
+    `;
+    res.json({ unread, notifications: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load notifications", detail: err.message });
+  }
+});
+
+app.post("/api/notifications/read-all", requireAuth, async (req, res) => {
+  try {
+    await sql`UPDATE notifications SET is_read = TRUE WHERE user_id = ${String(req.userId)} AND is_read = FALSE`;
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: "Failed to mark notifications as read", detail: err.message });
+  }
+});
+
+app.post("/api/notifications/:id/read", requireAuth, async (req, res) => {
+  try {
+    await sql`
+      UPDATE notifications SET is_read = TRUE
+      WHERE id = ${req.params.id} AND user_id = ${String(req.userId)}
+    `;
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: "Failed to mark notification as read", detail: err.message });
+  }
+});
+
+// Upcoming and current specials, for a "Specials" section later.
+app.get("/api/specials", requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT id, store, item, price, was_price, note,
+             starts_on::text AS starts_on, ends_on::text AS ends_on
+      FROM store_specials
+      WHERE ends_on >= (NOW() AT TIME ZONE 'Africa/Johannesburg')::date
+      ORDER BY starts_on, ends_on LIMIT 50
+    `;
+    res.json({ specials: rows });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load specials", detail: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
 initSchema()
+  .then(ensureChatSchema)
+  .then(ensureNotificationSchema)
   .then(() => {
+    console.log("Chat and notification tables ready.");
     app.listen(PORT, () => {
       console.log(`\nEduBudget AI running at http://localhost:${PORT}\n`);
     });

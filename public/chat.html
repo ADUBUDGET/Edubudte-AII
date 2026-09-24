@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduBudget AI - EduChatBot</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e2e2e2",
+                        "primary-fixed": "#ffdcc3",
+                        "on-tertiary": "#00344c",
+                        "surface-container-lowest": "#141416",
+                        "surface-tint": "#ffb77d",
+                        "on-tertiary-fixed": "#001e2e",
+                        "surface-dim": "#17171A",
+                        "outline-variant": "#564334",
+                        "surface-container-low": "#1b1b1b",
+                        "on-primary": "#4d2600",
+                        "on-tertiary-fixed-variant": "#004c6c",
+                        "on-error": "#690005",
+                        "surface-variant": "#353535",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "primary": "#ffb77d",
+                        "glass-stroke": "rgba(255, 255, 255, 0.15)",
+                        "on-error-container": "#ffdad6",
+                        "background": "#1C1C1E",
+                        "on-tertiary-container": "#004360",
+                        "surface-container": "#1f1f1f",
+                        "tertiary-fixed-dim": "#85cfff",
+                        "error": "#ffb4ab",
+                        "on-primary-container": "#623200",
+                        "secondary-fixed": "#e2e2e2",
+                        "primary-fixed-dim": "#ffb77d",
+                        "accent-glow": "rgba(255, 140, 0, 0.2)",
+                        "primary-container": "#ff8c00",
+                        "inverse-primary": "#904d00",
+                        "inverse-surface": "#e2e2e2",
+                        "tertiary-container": "#00b5fc",
+                        "error-container": "#93000a",
+                        "on-surface-variant": "#ddc1ae",
+                        "surface-bright": "#393939",
+                        "secondary-container": "#454747",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-secondary": "#2f3131",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "surface-container-highest": "#353535",
+                        "glass-surface": "rgba(255, 255, 255, 0.05)",
+                        "surface-container-high": "#2a2a2a",
+                        "surface": "#1C1C1E",
+                        "tertiary-fixed": "#c7e7ff",
+                        "secondary": "#c6c6c7",
+                        "tertiary": "#85cfff",
+                        "on-primary-fixed-variant": "#6e3900",
+                        "on-secondary-container": "#b4b5b5",
+                        "on-surface": "#e2e2e2",
+                        "on-primary-fixed": "#2f1500",
+                        "outline": "#a48c7a",
+                        "inverse-on-surface": "#303030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "unit": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-padding": "32px",
+                        "safe": "env(safe-area-inset-bottom)"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-md": ["Plus Jakarta Sans", "sans-serif"],
+                        "label-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-xl": ["Plus Jakarta Sans", "sans-serif"],
+                        "label-sm": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #1C1C1E;
+            color: #e2e2e2;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .glow-accent {
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.2);
+        }
+
+        .glass-input:focus {
+            border-color: #ffb77d;
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.2);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden" style="height:100dvh">
+<!-- Desktop Sidebar -->
+<aside class="hidden md:flex flex-col w-64 border-r border-glass-stroke bg-surface-container-lowest/80 backdrop-blur-3xl sticky top-0 h-screen p-6 z-40">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface mb-10 pl-2">EduBudget AI</h1>
+<nav class="flex-1 space-y-4">
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+<span class="font-label-lg">Bank</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/search.html">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-lg">Shop</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/analytics.html">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-label-lg">Budget</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/favorites.html">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-lg">Profile</span>
+</a>
+</nav>
+</aside>
+<div class="flex-1 flex flex-col min-w-0 h-full">
+<!-- TopAppBar -->
+<header class="bg-glass-surface dark:bg-glass-surface text-primary dark:text-primary docked full-width top-0 sticky backdrop-blur-3xl border-b border-glass-stroke shadow-none flex justify-between items-center w-full px-margin-mobile h-16 z-50 md:px-margin-desktop md:justify-end shrink-0">
+<button class="text-on-surface hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform md:hidden" onclick="location.href='/dashboard.html'" aria-label="Back to dashboard">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface md:hidden">EduBudget AI</h1>
+<div class="flex items-center gap-4">
+<button class="text-on-surface hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform" id="clearChatBtn" title="Clear conversation" aria-label="Clear conversation">
+<span class="material-symbols-outlined" data-icon="delete_sweep">delete_sweep</span>
+</button>
+<button class="w-8 h-8 rounded-full overflow-hidden border border-glass-stroke scale-95 active:scale-90 transition-transform">
+<img class="w-full h-full object-cover" data-alt="A close up portrait of a modern university student with a subtle smile, glowing orange rim lighting, dark moody background, high resolution, cyberpunk glassmorphism aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBerBatIkiZoAWgUeuUHuXCLmLy_6cYKaHz3i_0YO-J1DnR6WC3fNH_C1ZERvXIWRAeLCAZaN309qBs3cfY2F2JGVKDw5N0QJEISTz3Zn3qQDoGaCgQD0CNRTbf4Jr2tAdcUz8RpTubRgUEtn6xWNIXG-MwECZ-68CMGfLEZg-31DrCqgL0lXstj3mFOj_4GPtlY6uCexe4b-hln5eT0Jm7WPDClMQfgz-LmJ-tjCvkdVsT2Rlg1hAvcw"/>
+</button>
+</div>
+</header>
+<main class="flex-1 min-h-0 flex flex-col w-full max-w-3xl mx-auto px-margin-mobile md:px-margin-desktop pb-24 md:pb-6">
+<!-- Title -->
+<div class="flex items-center gap-4 py-gutter shrink-0">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center text-primary border border-primary/20 glow-accent">
+<span class="material-symbols-outlined" data-icon="smart_toy" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">EduChatBot</h2>
+<p class="font-label-sm text-on-surface-variant">Your student money buddy</p>
+</div>
+</div>
+<!-- Messages -->
+<div class="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4" id="messages"></div>
+<!-- Quick prompts (hidden once the conversation starts) -->
+<div class="flex flex-wrap gap-2 pb-3 shrink-0" id="chips">
+<button class="glass-panel rounded-full px-4 py-2 font-label-lg text-primary hover:bg-glass-surface transition-colors" data-prompt="Help me plan my monthly budget">Plan my budget</button>
+<button class="glass-panel rounded-full px-4 py-2 font-label-lg text-primary hover:bg-glass-surface transition-colors" data-prompt="Help me make a grocery list that fits my budget">Grocery list</button>
+<button class="glass-panel rounded-full px-4 py-2 font-label-lg text-primary hover:bg-glass-surface transition-colors" data-prompt="Give me tips to save money as a student">Ways to save</button>
+</div>
+<!-- Composer (same look as the Dashboard search bar) -->
+<form class="relative glass-panel rounded-3xl p-1 flex items-center backdrop-blur-3xl shrink-0" id="chatForm" autocomplete="off">
+<input class="w-full bg-transparent border-none text-on-surface font-body-md placeholder-on-surface-variant glass-input rounded-3xl py-3 px-4 focus:ring-0" id="chatInput" maxlength="1000" placeholder="Ask about budgets, groceries, saving..." type="text"/>
+<button class="bg-primary text-on-primary rounded-full px-6 py-2 font-label-lg mx-1 hover:bg-surface-tint transition-colors shadow-none glow-accent disabled:opacity-50" id="sendBtn" type="submit">Send</button>
+</form>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden bg-glass-surface dark:bg-glass-surface text-primary dark:text-primary font-label-sm text-label-sm fixed bottom-0 w-full rounded-t-xl backdrop-blur-3xl border-t border-glass-stroke shadow-none left-0 z-50 flex justify-around items-center px-4 py-2 pb-safe bg-surface-container-lowest">
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/dashboard.html'">
+<span class="material-symbols-outlined mb-1" data-icon="account_balance">account_balance</span>
+<span class="">Bank</span>
+</button>
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/search.html'">
+<span class="material-symbols-outlined mb-1" data-icon="shopping_bag">shopping_bag</span>
+<span class="">Shop</span>
+</button>
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/analytics.html'">
+<span class="material-symbols-outlined mb-1" data-icon="insights">insights</span>
+<span class="">Budget</span>
+</button>
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/favorites.html'">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="">Profile</span>
+</button>
+</nav>
+<script src="/shared.js"></script>
+<script>
+  (async () => {
+    const user = await requireAuthOrRedirect();
+    if (!user) return;
+
+    const messagesEl = document.getElementById('messages');
+    const chipsEl = document.getElementById('chips');
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    let sending = false;
+
+    const firstName = ((user.name || '').trim().split(/\s+/)[0]) || '';
+    const GREETING = 'Hey' + (firstName ? ' ' + firstName : '') + "! I'm EduChatBot, your student money buddy. I can help you plan a budget, build a grocery list that fits your money, or find ways to save. What's up?";
+
+    // All text is added with textContent (never innerHTML) so messages can never inject HTML.
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text != null) node.textContent = text;
+      return node;
+    }
+
+    function scrollToEnd() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function addUser(text) {
+      const row = el('div', 'flex justify-end');
+      row.appendChild(el('div', 'bg-primary text-on-primary rounded-2xl rounded-br-md px-4 py-3 font-body-md max-w-[85%] whitespace-pre-wrap break-words glow-accent', text));
+      messagesEl.appendChild(row);
+      scrollToEnd();
+    }
+
+    function addBot(text) {
+      const row = el('div', 'flex items-end gap-3 max-w-[92%]');
+      const avatar = el('div', 'w-8 h-8 shrink-0 rounded-full bg-primary-container/10 flex items-center justify-center text-primary border border-primary/20');
+      const icon = el('span', 'material-symbols-outlined', 'smart_toy');
+      icon.style.fontSize = '18px';
+      avatar.appendChild(icon);
+      const bubble = el('div', 'glass-panel rounded-2xl rounded-bl-md px-4 py-3 font-body-md text-on-surface whitespace-pre-wrap break-words backdrop-blur-3xl', text);
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      scrollToEnd();
+      return bubble;
+    }
+
+    async function loadHistory() {
+      try {
+        const resp = await fetch('/api/chat/history');
+        if (resp.status === 401) { window.location.href = '/login.html'; return; }
+        const data = await resp.json();
+        const msgs = data.messages || [];
+        if (msgs.length === 0) {
+          addBot(GREETING);
+        } else {
+          chipsEl.classList.add('hidden');
+          msgs.forEach(m => (m.role === 'user' ? addUser(m.content) : addBot(m.content)));
+        }
+      } catch (e) {
+        addBot(GREETING);
+      }
+    }
+
+    async function send(rawText) {
+      const text = (rawText || '').trim();
+      if (!text || sending) return;
+      sending = true;
+      sendBtn.disabled = true;
+      input.value = '';
+      chipsEl.classList.add('hidden');
+      addUser(text);
+      const bubble = addBot('EduChatBot is thinking...');
+      bubble.classList.add('animate-pulse');
+      try {
+        const resp = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+        if (resp.status === 401) { window.location.href = '/login.html'; return; }
+        const data = await resp.json().catch(() => ({}));
+        bubble.textContent = resp.ok ? data.reply : (data.error || 'Something went wrong. Please try again.');
+      } catch (e) {
+        bubble.textContent = 'Could not reach the server. Please try again.';
+      } finally {
+        bubble.classList.remove('animate-pulse');
+        sending = false;
+        sendBtn.disabled = false;
+        scrollToEnd();
+        input.focus();
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      send(input.value);
+    });
+
+    chipsEl.querySelectorAll('button[data-prompt]').forEach(btn => {
+      btn.addEventListener('click', () => send(btn.getAttribute('data-prompt')));
+    });
+
+    document.getElementById('clearChatBtn').addEventListener('click', async () => {
+      if (!confirm('Clear this whole conversation?')) return;
+      try {
+        await fetch('/api/chat/history', { method: 'DELETE' });
+      } catch (e) { /* ignore */ }
+      messagesEl.textContent = '';
+      chipsEl.classList.remove('hidden');
+      addBot(GREETING);
+    });
+
+    await loadHistory();
+  })();
+</script>
+</body></html>
