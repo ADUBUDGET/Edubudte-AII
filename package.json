@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "refresh-deals": "node scripts/refresh-deals.js"
+    "refresh-deals": "node scripts/refresh-deals.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
