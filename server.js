@@ -6,6 +6,8 @@ const rateLimit = require("express-rate-limit");
 const Groq = require("groq-sdk");
 const { sql, initSchema } = require("./db");
 const authRoutes = require("./auth");
+const smartBasket = require("./smart-basket");
+const smartBasketStore = require("./smart-basket-store");
 
 const app = express();
 app.use(express.json());
@@ -108,6 +110,14 @@ app.post("/api/search", requireAuth, async (req, res) => {
       link: r.link,
       thumbnail: r.thumbnail,
     }));
+
+    // Smart Basket: reuse these real results as the price cache for this term
+    // (national results only, so typed-location searches aren't cached).
+    // Never lets a cache problem break the search itself.
+    if (!location) {
+      smartBasketStore.saveCachedPrices(smartBasket.normaliseKey(item), rawResults)
+        .catch(e => console.error("Price cache save failed:", e.message));
+    }
 
     // Respect Min/Max price - previously collected in the UI but never applied.
     if (minPrice) rawResults = rawResults.filter(r => r.extracted_price == null || r.extracted_price >= Number(minPrice));
@@ -893,6 +903,22 @@ app.get("/api/specials", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Failed to load specials", detail: err.message });
   }
 });
+
+// ---------------------------------------------------------------
+// SMART BASKET + GROCERY LIST (see smart-basket.js)
+// ---------------------------------------------------------------
+// One-off price checks can call SerpAPI, so they're rate limited per IP.
+const smartBasketPriceLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: "Too many price checks, please wait a moment." },
+});
+smartBasket.registerSmartBasketRoutes(
+  app,
+  requireAuth,
+  smartBasket.createSmartBasketRoutes({ store: smartBasketStore }),
+  { priceLimiter: smartBasketPriceLimiter }
+);
 
 const PORT = process.env.PORT || 3000;
 
