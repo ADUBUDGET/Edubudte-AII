@@ -137,16 +137,26 @@ function composeSuggestions({ personal = [], popular = [], states = [], activeLi
 // PRICING
 // ---------------------------------------------------------------
 const STOP_WORDS = new Set(["a", "an", "and", "the", "of", "for", "with", "in"]);
+
+// Words that turn a grocery title into an accessory ("milk frother",
+// "bread bin"). Such listings only count if the student searched for them.
+const ACCESSORY_WORDS = new Set([
+  "frother", "holder", "dispenser", "bin", "container", "maker", "storage",
+  "toy", "costume", "keyring", "keychain", "case", "cover", "mould", "mold",
+]);
 const singular = w => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w);
 
-// True if every meaningful word of the query appears in the listing title,
-// so a search for "milk" can't be "cheapest" via a milk frother... unless
-// the title really is about milk. Plurals match singulars ("eggs" ~ "egg").
+// True if every meaningful word of the query appears in the listing title
+// and the title isn't an accessory the student didn't ask for, so "milk"
+// can't be "cheapest" via a R10 milk frother. Plurals match singulars
+// ("eggs" ~ "egg").
 function titleMatches(query, title) {
   const words = normaliseKey(query).split(" ").filter(w => w && !STOP_WORDS.has(w)).map(singular);
   if (words.length === 0) return false;
   const titleWords = new Set(normaliseKey(title).split(" ").map(singular));
-  return words.every(w => titleWords.has(w));
+  if (!words.every(w => titleWords.has(w))) return false;
+  const queryWords = new Set(words);
+  return ![...titleWords].some(w => ACCESSORY_WORDS.has(w) && !queryWords.has(w));
 }
 
 // Reads a pack size out of a listing title, e.g. "Clover Milk 2L" -> "2L",
@@ -468,7 +478,7 @@ function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, n
     // Tick an item off (purchased: true) or put it back (purchased: false).
     async updateListItem(req, res) {
       try {
-        if (!/^d+$/.test(req.params.id)) return res.status(404).json({ error: "Grocery list item not found" });
+        if (!/^\d+$/.test(req.params.id)) return res.status(404).json({ error: "Grocery list item not found" });
         const purchased = req.body?.purchased === true;
         const row = await store.setPurchased(req.userId, req.params.id, purchased);
         if (!row) return res.status(404).json({ error: "Grocery list item not found" });
@@ -481,7 +491,7 @@ function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, n
 
     async removeFromList(req, res) {
       try {
-        if (!/^d+$/.test(req.params.id)) return res.status(404).json({ error: "Grocery list item not found" });
+        if (!/^\d+$/.test(req.params.id)) return res.status(404).json({ error: "Grocery list item not found" });
         await store.deleteListItem(req.userId, req.params.id);
         res.status(204).send();
       } catch (err) {

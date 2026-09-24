@@ -398,3 +398,29 @@ test("skip/hide endpoints validate input", async () => {
   await routes.hide({ userId: 1, body: {} }, res);
   assert.equal(res.statusCode, 400);
 });
+
+test("titleMatches skips accessories unless the student asked for one", () => {
+  assert.ok(!sb.titleMatches("milk", "Electric Milk Frother"));
+  assert.ok(!sb.titleMatches("bread", "Stainless Steel Bread Bin"));
+  assert.ok(sb.titleMatches("milk frother", "Electric Milk Frother"));
+  assert.ok(sb.titleMatches("milk", "Clover Full Cream Milk 2L"));
+});
+
+test("grocery list routes accept numeric ids and 404 anything else", async () => {
+  const store = createFakeStore();
+  const { item } = await sb.addItemToList(store, 1, { itemName: "Milk" });
+  const routes = sb.createSmartBasketRoutes({ store, now: () => NOW });
+
+  const ok = fakeRes();
+  await routes.updateListItem({ userId: 1, params: { id: String(item.id) }, body: { purchased: true } }, ok);
+  assert.equal(ok.statusCode, 200);
+  assert.ok(ok.body.purchased_at);
+
+  const bad = fakeRes();
+  await routes.updateListItem({ userId: 1, params: { id: "abc" }, body: { purchased: true } }, bad);
+  assert.equal(bad.statusCode, 404);
+
+  const otherUser = fakeRes();
+  await routes.updateListItem({ userId: 2, params: { id: String(item.id) }, body: { purchased: false } }, otherUser);
+  assert.equal(otherUser.statusCode, 404);
+});
