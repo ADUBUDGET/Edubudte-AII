@@ -7,10 +7,8 @@ if (!process.env.DATABASE_URL) {
 // Neon's serverless driver runs queries over HTTP - no connection pool to manage.
 const sql = neon(process.env.DATABASE_URL);
 
-// Rebuilds the app's tables against real user accounts. Old anonymous-ID test
-// tables from the earlier version are dropped and recreated cleanly, since
-// that data was only ever test data and the schema shape has fundamentally
-// changed (text anonymous id -> real integer user id with a foreign key).
+// Creates the app's tables if they don't exist yet. Existing tables and their
+// data are left untouched, so user data survives server restarts.
 async function initSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS users (
@@ -26,9 +24,8 @@ async function initSchema() {
   // Safe no-op if the column already exists (older DBs created before this feature).
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS spending_target NUMERIC`;
 
-  await sql`DROP TABLE IF EXISTS search_history`;
   await sql`
-    CREATE TABLE search_history (
+    CREATE TABLE IF NOT EXISTS search_history (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       item_query TEXT NOT NULL,
@@ -38,9 +35,8 @@ async function initSchema() {
     )
   `;
 
-  await sql`DROP TABLE IF EXISTS favourites`;
   await sql`
-    CREATE TABLE favourites (
+    CREATE TABLE IF NOT EXISTS favourites (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       item_name TEXT NOT NULL,
@@ -51,9 +47,8 @@ async function initSchema() {
     )
   `;
 
-  await sql`DROP TABLE IF EXISTS budget_log`;
   await sql`
-    CREATE TABLE budget_log (
+    CREATE TABLE IF NOT EXISTS budget_log (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       amount NUMERIC NOT NULL,

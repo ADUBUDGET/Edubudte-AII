@@ -44,10 +44,9 @@ npm start
 
 Open **http://localhost:3000** - it lands on the Login/Register screen.
 
-Tables are created automatically on first run. Because this is a schema upgrade
-from the earlier anonymous-ID test version, `search_history`, `favourites`, and
-`budget_log` are dropped and recreated cleanly on startup - any old test data in
-those three tables is gone. `users` and `trending_deals` are left alone once created.
+Tables are created automatically on first run. Existing tables and their data are
+left untouched on later starts, so accounts, favourites, purchases and search
+history all survive server restarts.
 
 ## 4. (Optional) Seed the Dashboard's "Trending Deals"
 
