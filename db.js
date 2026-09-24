@@ -75,6 +75,58 @@ async function initSchema() {
     )
   `;
 
+  // SMART BASKET: the user's grocery list. item_key is the normalised item
+  // name (see normaliseKey in smart-basket.js) so "Brown Bread" and
+  // "brown bread!" count as the same item. Ticking an item off sets
+  // purchased_at instead of deleting it, so past lists can feed future
+  // suggestions. Only one *active* (not yet bought) row per item per user.
+  await sql`
+    CREATE TABLE IF NOT EXISTS grocery_list (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      item_name TEXT NOT NULL,
+      item_key TEXT NOT NULL,
+      product_title TEXT,
+      store_name TEXT,
+      price NUMERIC,
+      link TEXT,
+      thumbnail TEXT,
+      added_from TEXT NOT NULL DEFAULT 'manual',
+      purchased_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS grocery_list_active_item_idx
+    ON grocery_list (user_id, item_key) WHERE purchased_at IS NULL
+  `;
+
+  // SMART BASKET: per-user swipe decisions. 'skipped' hides a suggestion
+  // until skipped_until; 'hidden' hides it until the user restores it.
+  await sql`
+    CREATE TABLE IF NOT EXISTS smart_basket_state (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      item_key TEXT NOT NULL,
+      item_name TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('skipped', 'hidden')),
+      skipped_until TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (user_id, item_key)
+    )
+  `;
+
+  // SMART BASKET: shared cache of real SerpAPI shopping results per search
+  // term (no user data). Filled by /api/search and Smart Basket lookups so
+  // the same term isn't paid for twice within a day - protects the quota.
+  await sql`
+    CREATE TABLE IF NOT EXISTS price_cache (
+      query_key TEXT PRIMARY KEY,
+      results JSONB NOT NULL,
+      fetched_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+
   console.log("Database schema ready.");
 }
 
