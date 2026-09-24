@@ -69,6 +69,49 @@ categories and stores the real results.
 | `/search.html` ("Shop") | Real SerpAPI product search, Groq AI recommendation, price sort, save-to-favourites, and per-result Directions + real travel cost (walking/taxi/Uber estimates, weighed against your remaining budget by Groq). |
 | `/analytics.html` ("Budget") | Real budget health score, real 7-day spending chart, real category breakdown, one real AI-generated insight from your actual spending. |
 | `/favorites.html` ("Profile") | Real profile info, editable monthly budget, real favourites (full CRUD), real "Log a Purchase" budget entry form (full CRUD), sign out. |
+| `/smart-basket.html` ("Basket") | Personalised, swipeable product suggestions with the cheapest current price, plus the student's grocery list. See **Smart Basket** below. |
+
+## Smart Basket
+
+Suggests products each student is likely to need again, one swipeable card at a time.
+
+- **Swipe right / Add** puts the item on the grocery list. If it's already there, nothing is
+  duplicated; the saved price is refreshed and the student is told.
+- **Swipe left / Skip** hides it for 3 days (`SKIP_COOLDOWN_DAYS`), then it can come back.
+- **Swipe up / Hide** stops suggesting it until the student restores it from the Hidden panel.
+- Keyboard: focus the card stack and use ← / ↑ / →. The buttons work for mouse and screen readers.
+
+**Where suggestions come from** (`smart-basket.js`): the student's own purchases logged under
+Food/Other (by description), their searches, and items they've ticked off past grocery lists.
+Purchases count most, then list items, then searches; recent activity counts more (30-day
+half-life). One purchase, one ticked-off item, or two searches are enough to qualify. Each
+card says why it was suggested. Students with too little history get terms that at least 3
+different students have searched for (never who searched), then common staples.
+
+**Where prices come from**: store specials running today (`store_specials`) and real SerpAPI
+Google Shopping results for South Africa. Only listings whose title contains every word of
+the item count, and accessories like "milk frother" are ignored. The cheapest one is shown,
+compared with the cheapest offer at a different store. If nothing matches, the card says so.
+No price is ever guessed.
+
+**Quota protection**: SerpAPI results are cached per search term for 24 hours in `price_cache`
+(shared, no personal data). Normal Shop searches without a typed location fill the same cache
+for free. One Smart Basket load makes at most 3 live lookups; other cards are priced when they
+reach the top of the stack (`/api/smart-basket/price`, rate limited to 10/min).
+
+**Tables**: `grocery_list`, `smart_basket_state` (skipped/hidden per user) and `price_cache`,
+all created automatically on startup.
+
+## Tests
+
+```bash
+npm test
+```
+
+Runs the Smart Basket tests (`test/smart-basket.test.js`) with Node's built-in test runner.
+They cover recommendation ranking/filtering, fallback suggestions, skip/hide/add actions,
+duplicate prevention and cheapest-price selection. They use an in-memory store, so no
+database, API keys or network are needed.
 
 ## Security notes (what "production-grade" means here)
 
@@ -93,3 +136,6 @@ automatically once `NODE_ENV=production` is set behind HTTPS).
 - Distance filtering on the Search page's radius slider is visual only; actual radius
   filtering of results isn't implemented yet (SerpAPI's `location` param biases
   results regionally but doesn't hard-filter by exact km).
+- Smart Basket prices are South Africa-wide (like a Shop search with no location), not
+  per branch, so "cheapest" doesn't account for travel distance or branch stock.
+- Pack sizes are read from listing titles, so a card shows no size if the title has none.
