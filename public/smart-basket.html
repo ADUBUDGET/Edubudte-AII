@@ -202,6 +202,7 @@
 <div class="mb-6">
 <h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-surface">Smart Basket</h2>
 <p class="font-body-md text-on-surface-variant mt-1 text-sm md:text-base" id="basketIntro">Suggestions based on what you buy and search for, with the cheapest price we can find.</p>
+<p class="font-label-sm text-primary mt-2" id="basketBudgetStatus" aria-live="polite">Checking your available basket budget...</p>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter items-start">
 <!-- Card stack -->
@@ -244,9 +245,11 @@
 <h3 class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface" id="listHeading">My Grocery List</h3>
 <span class="font-label-sm text-on-surface-variant" id="listTotal"></span>
 </div>
-<form class="flex gap-2 mb-4" id="manualAddForm">
+<form class="flex flex-wrap gap-2 mb-4" id="manualAddForm">
 <label class="sr-only" for="manualItemInput">Add an item to your grocery list</label>
 <input class="glass-input flex-1 min-w-0 rounded-xl px-3 py-2 bg-white/5 border border-glass-stroke text-on-surface" id="manualItemInput" maxlength="120" placeholder="Add an item, e.g. Rice" type="text"/>
+<label class="sr-only" for="manualPriceInput">Item price in Rand</label>
+<input class="glass-input w-24 rounded-xl px-3 py-2 bg-white/5 border border-glass-stroke text-on-surface" id="manualPriceInput" min="0" placeholder="Price (R)" step="0.01" type="number"/>
 <button class="px-4 py-2 rounded-xl bg-primary text-on-primary font-label-sm" type="submit">Add</button>
 </form>
 <ul class="flex flex-col" id="groceryList">
@@ -331,6 +334,27 @@
     showToast(message, { error: !!isError });
   }
 
+  function updateBudgetStatus() {
+    const status = document.getElementById('basketBudgetStatus');
+    const priceInput = document.getElementById('manualPriceInput');
+    if (remainingBudget == null) {
+      status.textContent = 'No profile budget limit is set. Add a monthly budget or spending target on your Profile.';
+      priceInput.required = false;
+    } else if (remainingBudget < 0) {
+      status.textContent = 'Your current basket is over budget by ' + formatZAR(Math.abs(remainingBudget)) + '.';
+      priceInput.required = true;
+    } else {
+      status.textContent = 'Available for this basket: ' + formatZAR(Math.max(0, remainingBudget));
+      priceInput.required = true;
+    }
+  }
+
+  function canAddSuggestion(suggestion) {
+    if (remainingBudget == null) return true;
+    const price = Number(suggestion && suggestion.price && suggestion.price.price);
+    return Number.isFinite(price) && price >= 0 && price <= remainingBudget;
+  }
+
   // Changes go through apiSend (shared.js) so cached lists refresh; reads
   // stay live because Smart Basket prices and suggestions change often.
   async function api(method, url, body) {
@@ -361,6 +385,7 @@
         error: "Couldn't check prices right now - try again later.",
       };
       box.appendChild(el('p', 'font-body-md text-on-surface-variant', messages[s.priceStatus] || 'No price available.'));
+      if (remainingBudget != null) box.appendChild(el('p', 'font-label-sm text-on-surface-variant', 'A verified price is required before this can be added within your budget.'));
       return box;
     }
     const row = el('div', 'flex items-baseline gap-2 flex-wrap');
@@ -457,7 +482,12 @@
   }
 
   function setActionsDisabled(disabled) {
-    ['skipBtn', 'hideBtn', 'addBtn'].forEach(id => { document.getElementById(id).disabled = disabled; });
+    document.getElementById('skipBtn').disabled = disabled;
+    document.getElementById('hideBtn').disabled = disabled;
+    const addButton = document.getElementById('addBtn');
+    const allowed = deck.length > 0 && canAddSuggestion(deck[0]);
+    addButton.disabled = disabled || (deck.length > 0 && !allowed);
+    addButton.title = allowed || remainingBudget == null ? 'Add to grocery list' : 'Item does not fit your remaining budget';
   }
 
   function renderDeck() {
@@ -561,6 +591,12 @@
   async function act(direction) {
     const s = deck[0];
     if (busy || !s) return;
+    if (direction === 'add' && !canAddSuggestion(s)) {
+      toast(remainingBudget != null && s.price && s.price.price != null
+        ? 'That item is over your remaining basket budget.'
+        : 'A verified price is needed before this item can be added within your budget.', true);
+      return;
+    }
     busy = true;
     setActionsDisabled(true);
     const card = document.querySelector('#deck .sb-top');
@@ -583,6 +619,8 @@
           thumbnail: p ? p.thumbnail : null,
           addedFrom: 'smart_basket',
         });
+        remainingBudget = data.remainingBudget;
+        updateBudgetStatus();
         message = data.alreadyExisted
           ? name + ' is already on your grocery list' + (p ? ' - price updated to ' + formatZAR(p.price) : '')
           : 'Added ' + name + ' to your grocery list';
@@ -632,6 +670,7 @@
       const { data } = await api('GET', '/api/smart-basket');
       deck = data.suggestions || [];
       remainingBudget = data.remainingBudget;
+      updateBudgetStatus();
       skipCooldownDays = data.skipCooldownDays || skipCooldownDays;
       document.getElementById('basketIntro').textContent = data.personalised
         ? 'Suggestions based on what you buy and search for, with the cheapest price we can find.'
@@ -710,6 +749,11 @@
   async function setBought(item, bought, box) {
     try {
       await api('PUT', '/api/grocery-list/' + item.id, { purchased: bought });
+      if (remainingBudget != null) {
+        remainingBudget += (bought ? 1 : -1) * (Number(item.price) || 0);
+        updateBudgetStatus();
+        renderDeck();
+      }
       toast(bought ? 'Ticked off ' + item.item_name : item.item_name + ' is back on your list');
       loadGroceryList();
     } catch (err) {
@@ -721,6 +765,11 @@
   async function removeItem(item) {
     try {
       await api('DELETE', '/api/grocery-list/' + item.id);
+      if (remainingBudget != null && !item.purchased_at) {
+        remainingBudget += Number(item.price) || 0;
+        updateBudgetStatus();
+        renderDeck();
+      }
       toast('Removed ' + item.item_name);
       loadGroceryList();
     } catch (err) {
@@ -731,14 +780,23 @@
   document.getElementById('manualAddForm').addEventListener('submit', async e => {
     e.preventDefault();
     const input = document.getElementById('manualItemInput');
+    const priceInput = document.getElementById('manualPriceInput');
     const itemName = input.value.trim();
     if (!itemName) return;
     try {
-      const { data } = await api('POST', '/api/grocery-list', { itemName, addedFrom: 'manual' });
+      const { data } = await api('POST', '/api/grocery-list', {
+        itemName,
+        price: priceInput.value.trim() ? Number(priceInput.value) : null,
+        addedFrom: 'manual',
+      });
+      remainingBudget = data.remainingBudget;
+      updateBudgetStatus();
       const savedName = (data.item && data.item.item_name) || itemName;
       toast(data.alreadyExisted ? savedName + ' is already on your list' : 'Added ' + savedName);
       input.value = '';
+      priceInput.value = '';
       loadGroceryList();
+      renderDeck();
       // No need to keep suggesting something that's now on the list.
       const key = data.item && data.item.item_key;
       if (key && deck.some(s => s.itemKey === key)) {

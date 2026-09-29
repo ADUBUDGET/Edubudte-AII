@@ -103,12 +103,25 @@ module.exports = {
   },
 
   async getRemainingBudget(userId) {
-    const [user] = await sql`SELECT monthly_budget FROM users WHERE id = ${userId}`;
+    const [user] = await sql`SELECT monthly_budget, spending_target FROM users WHERE id = ${userId}`;
     const [{ total_spent }] = await sql`
       SELECT COALESCE(SUM(amount), 0) AS total_spent FROM budget_log WHERE user_id = ${userId}
     `;
-    const budget = Number(user?.monthly_budget) || 0;
-    return budget > 0 ? budget - Number(total_spent) : null;
+    const [{ list_total }] = await sql`
+      SELECT COALESCE(SUM(price), 0) AS list_total
+      FROM grocery_list WHERE user_id = ${userId} AND purchased_at IS NULL
+    `;
+    const monthlyBudget = Number(user?.monthly_budget) || 0;
+    const spendingTarget = Number(user?.spending_target) || 0;
+    const monthlyRemaining = monthlyBudget > 0
+      ? monthlyBudget - Number(total_spent) - Number(list_total)
+      : null;
+    const targetRemaining = spendingTarget > 0
+      ? spendingTarget - Number(list_total)
+      : null;
+    if (monthlyRemaining == null) return targetRemaining;
+    if (targetRemaining == null) return monthlyRemaining;
+    return Math.min(monthlyRemaining, targetRemaining);
   },
 
   async findActiveListItem(userId, itemKey) {
