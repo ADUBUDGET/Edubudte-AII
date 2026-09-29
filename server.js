@@ -27,7 +27,7 @@ const authLimiter = rateLimit({
 // ---------------------------------------------------------------
 // AUTH
 // ---------------------------------------------------------------
-app.post("/api/auth/register", authLimiter, authRoutes.register);
+app.post("/api/auth/register", authLimiter, (req, res, next) => emailSvc.welcomeEmailHook(req, res, next), authRoutes.register);
 app.post("/api/auth/login", authLimiter, authRoutes.login);
 app.post("/api/auth/logout", authRoutes.logout);
 app.get("/api/auth/me", authRoutes.requireAuth, authRoutes.me);
@@ -912,15 +912,28 @@ smartBasket.registerSmartBasketRoutes(
   { priceLimiter: smartBasketPriceLimiter }
 );
 
+// ---------------------------------------------------------------
+// EMAIL: welcome email, notification emails, unsubscribe link
+// ---------------------------------------------------------------
+const { createEmailService } = require("./emailService");
+const emailSvc = createEmailService({
+  app,
+  sql,
+  requireAuth,
+  generators: [generateBudgetNotifications, generateSpecialNotifications, generateDealNotifications],
+});
+
 const PORT = process.env.PORT || 3000;
 
 initSchema()
   .then(ensureChatSchema)
   .then(ensureNotificationSchema)
+  .then(emailSvc.ensureEmailSchema)
   .then(() => {
-    console.log("Chat and notification tables ready.");
+    console.log("Chat, notification and email tables ready.");
     app.listen(PORT, () => {
       console.log(`\nEduBudget AI running at http://localhost:${PORT}\n`);
+      emailSvc.startEmailJob();
     });
   })
   .catch(err => {

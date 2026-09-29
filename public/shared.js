@@ -61,7 +61,10 @@ const EB_CSS = `
 .eb-panel-title{font-size:16px;font-weight:700}
 .eb-mark-all{background:none;border:0;color:#ffb77d;font:600 13px 'Plus Jakarta Sans',sans-serif;cursor:pointer;padding:4px 0}
 .eb-mark-all:disabled{opacity:.4;cursor:default}
-.eb-list{overflow-y:auto}
+.eb-list{overflow-y:auto;flex:1;min-height:0}
+.eb-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;color:#ddc1ae;cursor:pointer}
+.eb-foot[hidden]{display:none}
+.eb-foot input{width:18px;height:18px;flex:none;accent-color:#ff8c00;cursor:pointer}
 .eb-item{display:flex;gap:12px;padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);cursor:pointer;text-align:left;width:100%;background:transparent;border-left:0;border-right:0;border-bottom:0;color:inherit;font-family:inherit}
 .eb-item:hover{background:rgba(255,255,255,.05)}
 .eb-item.eb-unread{background:rgba(255,140,0,.08)}
@@ -75,7 +78,7 @@ const EB_CSS = `
 `;
 
 const EB_TYPE_ICONS = { budget: "account_balance_wallet", special: "local_offer", deal: "trending_up" };
-const ebState = { items: [], unread: 0, badge: null, panel: null, list: null, markAll: null };
+const ebState = { items: [], unread: 0, badge: null, panel: null, list: null, markAll: null, foot: null, emailBox: null };
 
 function ebEl(tag, className, text) {
   const node = document.createElement(tag);
@@ -162,6 +165,29 @@ async function ebMarkAllRead() {
   } catch (e) { /* ignore */ }
 }
 
+async function ebLoadEmailPref() {
+  try {
+    const resp = await fetch("/api/email-prefs");
+    if (!resp.ok) return; // older server without email support: keep the switch hidden
+    const data = await resp.json();
+    ebState.emailBox.checked = data.enabled !== false;
+    ebState.foot.hidden = false;
+  } catch (e) { /* optional */ }
+}
+
+async function ebSaveEmailPref(enabled) {
+  try {
+    const resp = await fetch("/api/email-prefs", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    });
+    if (!resp.ok) throw new Error("save failed");
+  } catch (e) {
+    ebState.emailBox.checked = !enabled; // put the switch back if saving failed
+  }
+}
+
 let ebStarted = false;
 
 function initGlobalUI() {
@@ -203,6 +229,20 @@ function initGlobalUI() {
   const list = ebEl("div", "eb-list");
   panel.appendChild(head);
   panel.appendChild(list);
+
+  // "Also email me these" switch (hidden until the server confirms email support)
+  const foot = ebEl("label", "eb-foot");
+  foot.hidden = true;
+  foot.appendChild(ebEl("span", null, "Also email me these"));
+  const emailBox = ebEl("input");
+  emailBox.type = "checkbox";
+  emailBox.checked = true;
+  emailBox.addEventListener("change", () => ebSaveEmailPref(emailBox.checked));
+  foot.appendChild(emailBox);
+  panel.appendChild(foot);
+  ebState.foot = foot;
+  ebState.emailBox = emailBox;
+
   document.body.appendChild(panel);
   ebState.panel = panel;
   ebState.list = list;
@@ -232,4 +272,14 @@ function initGlobalUI() {
 
   ebRender();
   ebLoadNotifications();
+  ebLoadEmailPref();
+
+  // Live updates: re-check every 2 minutes while the tab is visible, and
+  // straight away when the student comes back to the tab.
+  setInterval(() => {
+    if (!document.hidden) ebLoadNotifications();
+  }, 120000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) ebLoadNotifications();
+  });
 }
