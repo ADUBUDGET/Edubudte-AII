@@ -337,6 +337,13 @@
     if (f.price != null) detail.push(formatZAR(f.price));
     if (f.store_name) detail.push(f.store_name);
     if (detail.length) label.appendChild(el('span', 'block text-sm text-on-surface-variant', detail.join(' at ') + (f.price != null ? ' (saved price)' : '')));
+    // Saved prices are never presented as current: say when they were checked.
+    if (f.price != null) {
+      const checked = f.price_checked_at ? new Date(f.price_checked_at).getTime() : null;
+      const old = !checked || Date.now() - checked > 24 * 60 * 60 * 1000;
+      label.appendChild(el('span', 'block text-xs ' + (old ? 'text-yellow-300' : 'text-on-surface-variant'),
+        checked ? 'Price checked ' + ebTimeSince(checked) + (old ? ' - may have changed' : '') : 'Price date unknown - may have changed'));
+    }
     body.appendChild(label);
     body.appendChild(el('span', 'block text-xs mt-1 ' + (purchased ? 'text-primary' : 'text-on-surface-variant'),
       purchased ? 'Purchased ' + shortDate(f.purchased_at) : 'Saved ' + shortDate(f.created_at)));
@@ -437,6 +444,8 @@
     try {
       await addToBasket({
         itemName: f.item_name, storeName: f.store_name || undefined, price: f.price, quantity: 1,
+        supplierId: f.supplier_id || undefined, productId: f.product_id || undefined,
+        priceCheckedAt: f.price_checked_at || undefined,
         link: f.link, thumbnail: f.thumbnail, addedFrom: 'favourite',
       });
     } catch (err) {

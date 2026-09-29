@@ -147,3 +147,10 @@ test("GET /api/basket marks each saved price as current or stale and counts stal
   assert.equal(res.body.totals.stalePriceCount, 1);
   assert.equal(res.body.priceFreshHours, 24);
 });
+
+test("Smart Basket's cheapest price keeps the real listing's product id", () => {
+  const offers = sb.toOffers({ shoppingResults: [mapShoppingResult(serp)] });
+  const best = sb.pickCheapest("rice", offers);
+  assert.equal(best.productId, serp.product_id);
+  assert.equal(best.supplierId, "shoprite");
+});

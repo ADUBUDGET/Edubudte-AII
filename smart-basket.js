@@ -172,6 +172,7 @@ function toOffers({ shoppingResults = [], specials = [] }) {
   for (const r of shoppingResults) {
     offers.push({
       kind: "online",
+      productId: r.product_id || null,
       title: r.title,
       price: r.extracted_price != null ? Number(r.extracted_price) : NaN,
       store: r.source || null,
@@ -235,6 +236,7 @@ function pickCheapest(query, offers, { nearbySupplierIds = null } = {}) {
 
   return {
     title: best.title,
+    productId: best.productId || null,
     price: best.price,
     store: best.supplier.name,
     supplierId: best.supplier.id,
