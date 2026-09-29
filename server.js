@@ -125,7 +125,7 @@ app.post("/api/search", requireAuth, async (req, res) => {
             throw Object.assign(new Error("SerpAPI request failed"), { status: 502, detail: await serpResp.text() });
           }
           const serpData = await serpResp.json();
-          return (serpData.shopping_results || []).slice(0, 20).map(r => ({
+          return (serpData.shopping_results || []).slice(0, 40).map(r => ({ // all 40: many are filtered out by suppliers.js
             title: r.title,
             price: r.price,
             extracted_price: r.extracted_price,
