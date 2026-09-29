@@ -11,31 +11,286 @@ function formatZAR(amount) {
 // read it directly - this is the correct way to check auth client-side).
 // Redirects to /login.html if not authenticated. Returns the user object
 // ({id, name, email, monthlyBudget}) if authenticated, or null.
+// When offline, a student who was signed in on this browser keeps seeing
+// their saved data instead of being sent to the login page.
 async function requireAuthOrRedirect() {
+  let user = null;
   try {
     const resp = await fetch("/api/auth/me");
     if (!resp.ok) {
+      ebHandleSignedOut();
+      return null;
+    }
+    user = await resp.json();
+    ebCache.setOwner(user.id);
+    ebCache.set("/api/auth/me", user);
+  } catch (err) {
+    ebCache.resumeLastOwner();
+    const saved = ebCache.get("/api/auth/me");
+    if (!saved) {
       window.location.href = "/login.html";
       return null;
     }
-    const user = await resp.json();
-    // Add the chat shortcut + notification bell. Wrapped so that a problem in
-    // this optional UI can never break the page itself.
-    try {
-      initGlobalUI();
-    } catch (e) {
-      console.error("Global UI failed to start:", e);
-    }
-    return user;
-  } catch (err) {
-    window.location.href = "/login.html";
-    return null;
+    user = saved.data;
   }
+  // Add the chat shortcut + notification bell. Wrapped so that a problem in
+  // this optional UI can never break the page itself.
+  try {
+    initGlobalUI();
+  } catch (e) {
+    console.error("Global UI failed to start:", e);
+  }
+  return user;
 }
 
 async function logout() {
-  await fetch("/api/auth/logout", { method: "POST" });
+  ebCache.clear(); // never leave one student's data behind for the next
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch (e) { /* still leave the signed-in pages */ }
   window.location.href = "/login.html";
+}
+
+function ebHandleSignedOut() {
+  ebCache.clear();
+  window.location.href = "/login.html";
+}
+
+// ---------------------------------------------------------------
+// CACHE: per-student copies of API responses, so pages open instantly and
+// still show something useful offline. Stored in localStorage under the
+// signed-in user's id and wiped on logout or when someone else signs in.
+// Only API data is stored - never passwords or the session token (which is
+// an httpOnly cookie the page can't read anyway).
+// ---------------------------------------------------------------
+const EB_CACHE_PREFIX = "eb-cache:";
+const EB_CACHE_OWNER_KEY = "eb-cache-owner";
+const EB_CACHE_MAX_ENTRIES = 60;
+
+// How long cached data counts as current before it is refreshed.
+const EB_MAX_AGE = {
+  default: 60 * 1000,
+  prices: 10 * 60 * 1000, // anything showing a price: older copies are labelled, never shown as current
+};
+
+// A successful change to a URL on the left makes these cached URLs out of date.
+const EB_INVALIDATION_RULES = [
+  [/^\/api\/favourites/, ["/api/favourites"]],
+  [/^\/api\/budget/, ["/api/budget", "/api/dashboard", "/api/analytics", "/api/smart-basket"]],
+  [/^\/api\/grocery-list/, ["/api/grocery-list", "/api/smart-basket"]],
+  [/^\/api\/smart-basket\//, ["/api/smart-basket"]],
+  [/^\/api\/auth\/profile/, ["/api/auth/me", "/api/dashboard", "/api/analytics", "/api/smart-basket"]],
+  [/^\/api\/search$/, ["/api/search/frequent", "/api/dashboard", "/api/smart-basket"]],
+];
+
+function createApiCache(storage, now = () => Date.now()) {
+  let owner = null;
+  const attempt = fn => { try { return fn(); } catch (e) { return null; } };
+  const ownPrefix = () => EB_CACHE_PREFIX + owner + ":";
+  const keys = () => attempt(() => {
+    const list = [];
+    for (let i = 0; i < storage.length; i++) list.push(storage.key(i));
+    return list;
+  }) || [];
+  const removeWhere = test => keys().filter(k => k && test(k)).forEach(k => attempt(() => storage.removeItem(k)));
+
+  const cache = {
+    // Call after every successful login check. A different student than last
+    // time means the old student's data is removed first.
+    setOwner(userId) {
+      const next = String(userId);
+      const previous = attempt(() => storage.getItem(EB_CACHE_OWNER_KEY));
+      if (previous !== next) cache.clear();
+      owner = next;
+      attempt(() => storage.setItem(EB_CACHE_OWNER_KEY, next));
+    },
+    // Offline: carry on as the student who last signed in on this browser.
+    resumeLastOwner() {
+      owner = attempt(() => storage.getItem(EB_CACHE_OWNER_KEY));
+    },
+    get(url) {
+      if (!owner) return null;
+      const raw = attempt(() => storage.getItem(ownPrefix() + url));
+      if (!raw) return null;
+      const entry = attempt(() => JSON.parse(raw));
+      if (!entry || typeof entry.savedAt !== "number") return null;
+      return { data: entry.data, savedAt: entry.savedAt, ageMs: now() - entry.savedAt };
+    },
+    set(url, data) {
+      if (!owner) return;
+      const value = JSON.stringify({ savedAt: now(), data });
+      if (attempt(() => (storage.setItem(ownPrefix() + url, value), true)) === null) {
+        // Storage full: drop the cache (keeping the same owner) and try once more.
+        const current = owner;
+        cache.clear();
+        cache.setOwner(current);
+        attempt(() => storage.setItem(ownPrefix() + url, value));
+      }
+      // Keep the cache small: drop the oldest entries beyond the limit.
+      const mine = keys().filter(k => k && k.startsWith(ownPrefix()));
+      if (mine.length > EB_CACHE_MAX_ENTRIES) {
+        mine
+          .map(k => ({ k, t: attempt(() => JSON.parse(storage.getItem(k)).savedAt) || 0 }))
+          .sort((a, b) => a.t - b.t)
+          .slice(0, mine.length - EB_CACHE_MAX_ENTRIES)
+          .forEach(({ k }) => attempt(() => storage.removeItem(k)));
+      }
+    },
+    // Removes cached URLs that start with any of the given prefixes.
+    invalidate(prefixes) {
+      if (!owner) return;
+      removeWhere(k => prefixes.some(p => k.startsWith(ownPrefix() + p)));
+    },
+    invalidateFor(changedUrl) {
+      const path = String(changedUrl).split("?")[0];
+      const stale = EB_INVALIDATION_RULES.filter(([pattern]) => pattern.test(path)).flatMap(([, urls]) => urls);
+      if (stale.length) cache.invalidate(stale);
+    },
+    clear() {
+      removeWhere(k => k.startsWith(EB_CACHE_PREFIX) || k === EB_CACHE_OWNER_KEY);
+      owner = null;
+    },
+  };
+  return cache;
+}
+
+// Falls back to memory when localStorage is blocked (private mode, etc.).
+function ebStorage() {
+  try {
+    const s = window.localStorage;
+    s.setItem("eb-cache-test", "1");
+    s.removeItem("eb-cache-test");
+    return s;
+  } catch (e) {
+    const mem = new Map();
+    return {
+      get length() { return mem.size; },
+      key: i => [...mem.keys()][i] ?? null,
+      getItem: k => (mem.has(k) ? mem.get(k) : null),
+      setItem: (k, v) => mem.set(k, String(v)),
+      removeItem: k => mem.delete(k),
+    };
+  }
+}
+
+const ebCache = typeof window !== "undefined" ? createApiCache(ebStorage()) : null;
+
+// Shows cached data straight away (if any), then fetches fresh data unless
+// the cached copy is still current. `render(data, meta)` may run twice:
+// meta = { fromCache, savedAt, stale }. Errors only reach onError when there
+// is nothing cached to show.
+async function loadWithCache(url, { maxAgeMs = EB_MAX_AGE.default, render, onError }) {
+  const cached = ebCache.get(url);
+  if (cached) render(cached.data, { fromCache: true, savedAt: cached.savedAt, stale: cached.ageMs > maxAgeMs });
+  if (cached && cached.ageMs <= maxAgeMs) return cached.data;
+  try {
+    const resp = await fetch(url);
+    if (resp.status === 401) { ebHandleSignedOut(); return null; }
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) throw new Error((data && data.error) || "Something went wrong. Please try again.");
+    ebCache.set(url, data);
+    render(data, { fromCache: false, savedAt: Date.now(), stale: false });
+    return data;
+  } catch (err) {
+    const friendly = err instanceof TypeError ? new Error("Can't reach EduBudget right now. Check your connection.") : err;
+    if (!cached && onError) onError(friendly);
+    return cached ? cached.data : null;
+  }
+}
+
+// Sends a change (POST/PUT/DELETE) and clears the cached data it affects.
+// Throws an Error with a readable message on failure.
+async function apiSend(method, url, body) {
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method,
+      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (e) {
+    throw new Error("You're offline or the server can't be reached. Please try again.");
+  }
+  if (resp.status === 401) {
+    ebHandleSignedOut();
+    throw new Error("Please sign in again.");
+  }
+  const data = resp.status === 204 ? null : await resp.json().catch(() => null);
+  if (!resp.ok) {
+    const err = new Error((data && data.error) || "Something went wrong. Please try again.");
+    err.status = resp.status;
+    throw err;
+  }
+  ebCache.invalidateFor(url);
+  return { status: resp.status, data };
+}
+
+function ebTimeSince(savedAt) {
+  const mins = Math.round((Date.now() - savedAt) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return mins + " min ago";
+  const hrs = Math.round(mins / 60);
+  return hrs < 24 ? hrs + " h ago" : Math.round(hrs / 24) + " d ago";
+}
+
+// ---------------------------------------------------------------
+// TOAST: short confirmation ("Added to favourites"), announced to screen
+// readers. Replaces alert() pop-ups.
+// ---------------------------------------------------------------
+let ebToastTimer = null;
+function showToast(message, { error = false } = {}) {
+  ebEnsureStyles();
+  let t = document.getElementById("eb-toast");
+  if (!t) {
+    t = ebEl("div", "eb-toast");
+    t.id = "eb-toast";
+    t.setAttribute("role", "status");
+    t.setAttribute("aria-live", "polite");
+    document.body.appendChild(t);
+  }
+  t.textContent = message;
+  t.classList.toggle("eb-toast-error", error);
+  t.classList.add("eb-toast-show");
+  clearTimeout(ebToastTimer);
+  ebToastTimer = setTimeout(() => t.classList.remove("eb-toast-show"), 3500);
+}
+
+// ---------------------------------------------------------------
+// MOST FREQUENTLY SEARCHED: a scrollable row of chips from the student's
+// own search history (GET /api/search/frequent). Used on Shop and Bank.
+// ---------------------------------------------------------------
+const EB_STARTER_SEARCHES = ["Bread", "Milk", "Eggs", "Rice", "Toilet paper"];
+
+function renderFrequentSearches(container, { onPick }) {
+  const draw = (items, isStarter) => {
+    container.textContent = "";
+    const head = ebEl("div", "eb-freq-head");
+    head.appendChild(ebEl("span", "eb-freq-title", isStarter ? "Try searching for" : "Most frequently searched"));
+    if (isStarter) head.appendChild(ebEl("span", "eb-freq-note", "Your top searches will appear here"));
+    container.appendChild(head);
+    const row = ebEl("div", "eb-freq-row");
+    row.setAttribute("role", "list");
+    items.forEach(item => {
+      const chip = ebEl("button", "eb-chip");
+      chip.type = "button";
+      chip.setAttribute("role", "listitem");
+      chip.appendChild(ebEl("span", null, item.label));
+      if (item.count > 1) chip.appendChild(ebEl("span", "eb-chip-count", "×" + item.count));
+      chip.setAttribute("aria-label", item.count > 1 ? `Search for ${item.label}, searched ${item.count} times` : `Search for ${item.label}`);
+      chip.addEventListener("click", () => onPick(item.query));
+      row.appendChild(chip);
+    });
+    container.appendChild(row);
+  };
+  ebEnsureStyles();
+  return loadWithCache("/api/search/frequent", {
+    render: data => {
+      const items = (data && data.items) || [];
+      if (items.length) draw(items, false);
+      else draw(EB_STARTER_SEARCHES.map(label => ({ label, query: label, count: 0 })), true);
+    },
+    onError: () => { container.textContent = ""; }, // optional extra: hide quietly
+  });
 }
 
 // ---------------------------------------------------------------
@@ -75,6 +330,20 @@ const EB_CSS = `
 .eb-item-text{font-size:13px;line-height:18px;color:#ddc1ae;margin-top:2px}
 .eb-item-time{font-size:11px;color:#a48c7a;margin-top:4px}
 .eb-empty{padding:28px 16px;text-align:center;color:#ddc1ae;font-size:14px;border-top:1px solid rgba(255,255,255,.08)}
+.eb-toast{position:fixed;left:50%;top:76px;transform:translate(-50%,-8px);z-index:90;max-width:min(90vw,480px);width:max-content;padding:12px 20px;border-radius:16px;background:#2a2a2a;border:1px solid rgba(255,255,255,.15);box-shadow:0 12px 32px rgba(0,0,0,.45);color:#e2e2e2;font:500 15px/22px 'Plus Jakarta Sans',sans-serif;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease}
+.eb-toast-show{opacity:1;transform:translate(-50%,0)}
+.eb-toast-error{color:#ffb4ab;border-color:rgba(255,180,171,.4)}
+.eb-offline{position:fixed;left:0;right:0;top:0;z-index:95;padding:6px 16px;background:#6e3900;color:#ffdcc3;font:600 13px/18px 'Plus Jakarta Sans',sans-serif;text-align:center}
+.eb-offline[hidden]{display:none}
+.eb-freq-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 4px 8px}
+.eb-freq-title{font:700 12px/16px 'Plus Jakarta Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#e2e2e2}
+.eb-freq-note{font:400 12px/16px 'Plus Jakarta Sans',sans-serif;color:#ddc1ae}
+.eb-freq-row{display:flex;gap:8px;overflow-x:auto;padding:2px 4px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.eb-chip{flex:none;scroll-snap-align:start;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:8px 16px;border-radius:9999px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#e2e2e2;font:600 14px/20px 'Plus Jakarta Sans',sans-serif;cursor:pointer;white-space:nowrap;transition:background .15s ease,border-color .15s ease}
+.eb-chip:hover{background:rgba(255,140,0,.12);border-color:rgba(255,183,125,.5)}
+.eb-chip:focus-visible{outline:2px solid #ffb77d;outline-offset:2px}
+.eb-chip-count{font-size:12px;color:#ffb77d}
+@media (prefers-reduced-motion:reduce){.eb-toast{transition:none}}
 `;
 
 const EB_TYPE_ICONS = { budget: "account_balance_wallet", special: "local_offer", deal: "trending_up" };
@@ -190,13 +459,34 @@ async function ebSaveEmailPref(enabled) {
 
 let ebStarted = false;
 
+let ebStylesAdded = false;
+function ebEnsureStyles() {
+  if (ebStylesAdded) return;
+  ebStylesAdded = true;
+  const style = document.createElement("style");
+  style.textContent = EB_CSS;
+  document.head.appendChild(style);
+}
+
+// Thin banner while the browser is offline; saved data keeps showing.
+function ebInitOfflineBanner() {
+  const banner = ebEl("div", "eb-offline", "You're offline. Showing your saved data - changes need a connection.");
+  banner.setAttribute("role", "status");
+  banner.hidden = navigator.onLine !== false;
+  document.body.appendChild(banner);
+  window.addEventListener("offline", () => { banner.hidden = false; });
+  window.addEventListener("online", () => {
+    banner.hidden = true;
+    showToast("Back online");
+  });
+}
+
 function initGlobalUI() {
   if (ebStarted) return;
   ebStarted = true;
 
-  const style = document.createElement("style");
-  style.textContent = EB_CSS;
-  document.head.appendChild(style);
+  ebEnsureStyles();
+  ebInitOfflineBanner();
 
   // --- Notification bell: goes in the top bar, next to the avatar ---
   const bell = ebEl("button", "eb-bell");
@@ -282,4 +572,9 @@ function initGlobalUI() {
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) ebLoadNotifications();
   });
+}
+
+// Lets the Node test runner load the cache logic (ignored in the browser).
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { createApiCache, EB_INVALIDATION_RULES, EB_MAX_AGE };
 }
