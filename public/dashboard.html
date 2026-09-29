@@ -312,23 +312,26 @@
 
     }
 
+    // Deals are real, recent Google Shopping prices from approved shops for
+    // what students search most (see deals.js); older ones aren't returned.
     function renderDeals(dealsData) {
-    document.getElementById('dealsCacheNote').textContent = dealsData.cacheNote ? '(cached results)' : '';
+    const esc = ebEscape;
+    document.getElementById('dealsCacheNote').textContent = dealsData.checkedAt ? 'Prices checked ' + ebTimeSince(new Date(dealsData.checkedAt).getTime()) : '';
     const dealsContainer = document.getElementById('dealsContainer');
     if (!dealsData.deals || dealsData.deals.length === 0) {
-      dealsContainer.innerHTML = '<p class="text-on-surface-variant col-span-3">No cached deals yet - ask your developer to run `npm run refresh-deals`.</p>';
+      dealsContainer.innerHTML = '<p class="text-on-surface-variant col-span-3">No current deals right now. Deals appear here once students have searched for the same items and prices have been checked in the last ' + esc(dealsData.maxAgeDays || 3) + ' days.</p>';
     } else {
       dealsContainer.innerHTML = dealsData.deals.slice(0, 3).map(d => `
-        <div class="glass-panel rounded-2xl overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300 backdrop-blur-3xl">
-          <div class="h-40 md:h-48 relative">
-            <img class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" src="${d.thumbnail || ''}" onerror="this.style.display='none'"/>
+        <div class="glass-panel rounded-2xl overflow-hidden group backdrop-blur-3xl">
+          <div class="h-40 md:h-48 relative bg-surface-container-high">
+            ${/^https?:\/\//i.test(d.thumbnail || '') ? `<img alt="" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" src="${esc(d.thumbnail)}" onerror="this.style.display='none'"/>` : ''}
             <div class="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
-            <div class="absolute top-3 right-3 bg-primary text-on-primary font-label-sm px-3 py-1 rounded-full glow-accent">${d.price_text || ''}</div>
+            <div class="absolute top-3 right-3 bg-primary text-on-primary font-label-sm px-3 py-1 rounded-full glow-accent">${esc(formatZAR(d.extracted_price))}</div>
           </div>
           <div class="p-6 relative z-10 -mt-6">
-            <h4 class="font-body-lg text-on-surface mb-1 font-bold">${d.title || 'Untitled'}</h4>
-            <p class="font-body-md mb-4 text-on-surface">${d.source || ''} &middot; ${d.query_label || ''}</p>
-            <a class="block text-center w-full py-2 rounded-lg border border-glass-stroke text-primary font-label-lg hover:bg-glass-surface transition-colors" href="${d.link || '#'}" target="_blank">View Deal</a>
+            <h4 class="font-body-lg text-on-surface mb-1 font-bold line-clamp-2">${esc(d.title || 'Untitled')}</h4>
+            <p class="font-body-md mb-4 text-on-surface">${esc(d.supplier_name)} &middot; ${esc(d.query_label || '')}</p>
+            <a class="block text-center w-full py-2 rounded-lg border border-glass-stroke text-primary font-label-lg hover:bg-glass-surface transition-colors" href="/search.html?q=${encodeURIComponent(d.query_label || d.title || '')}">Compare in Shop</a>
           </div>
         </div>
       `).join('');

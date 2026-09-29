@@ -189,6 +189,10 @@ async function initSchema() {
     DELETE FROM price_cache
     WHERE query_key NOT LIKE ${CACHE_VERSION + ":%"} OR fetched_at < NOW() - INTERVAL '7 days'
   `;
+  // Deals keep the real product and supplier ids; week-old deals are removed.
+  await sql`ALTER TABLE trending_deals ADD COLUMN IF NOT EXISTS product_id TEXT`;
+  await sql`ALTER TABLE trending_deals ADD COLUMN IF NOT EXISTS supplier_id TEXT`;
+  await sql`DELETE FROM trending_deals WHERE fetched_at < NOW() - INTERVAL '7 days'`;
 
   // NEARBY SHOPS: cached branch locations per approved supplier per ~5 km
   // area (see location.js). Shared, no personal data.

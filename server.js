@@ -10,6 +10,7 @@ const smartBasket = require("./smart-basket");
 const smartBasketStore = require("./smart-basket-store");
 const searchCache = require("./search-cache");
 const shoppingResults = require("./shopping-results");
+const { selectCurrentDeals, DEALS_MAX_AGE_DAYS } = require("./deals");
 const suppliers = require("./suppliers");
 const locationApi = require("./location");
 const locationStore = require("./location-store");
@@ -227,10 +228,15 @@ app.get("/api/search/frequent", requireAuth, async (req, res) => {
 // ---------------------------------------------------------------
 app.get("/api/deals", requireAuth, async (req, res) => {
   try {
-    const rows = await sql`
-      SELECT * FROM trending_deals ORDER BY fetched_at DESC LIMIT 20
-    `;
-    res.json({ deals: rows, cacheNote: "These are cached real search results, refreshed periodically (not live per page load) to protect API quota." });
+    const rows = await sql`SELECT * FROM trending_deals ORDER BY fetched_at DESC LIMIT 100`;
+    // Only recent deals from approved suppliers (deals.js); older prices
+    // aren't shown as current.
+    const deals = selectCurrentDeals(rows);
+    res.json({
+      deals,
+      checkedAt: deals.length ? deals[0].fetched_at : null,
+      maxAgeDays: DEALS_MAX_AGE_DAYS,
+    });
   } catch (err) {
     res.status(500).json({ error: "Failed to load deals", detail: err.message });
   }
