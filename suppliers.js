@@ -17,7 +17,6 @@ const SUPPLIERS = [
   { id: "woolworths", name: "Woolworths", match: /\bwoolworths\b/, active: true },
   { id: "boxer", name: "Boxer", match: /\bboxer\b/, active: true },
   { id: "makro", name: "Makro", match: /\bmakro\b/, active: true },
-  { id: "game", name: "Game", match: /^game( stores| co za)?$/, active: true },
   { id: "usave", name: "Usave", match: /\busave\b/, active: true },
   { id: "ok-foods", name: "OK Foods", match: /^ok (foods|grocer|minimark|express)\b/, active: true },
   { id: "food-lovers", name: "Food Lover's Market", match: /\bfood lovers? (s )?market\b|\bfood lover s market\b/, active: true },

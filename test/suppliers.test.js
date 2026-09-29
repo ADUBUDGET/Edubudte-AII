@@ -17,7 +17,7 @@ test("maps the names Google uses to one approved supplier", () => {
     "KwikSpar": "spar",
     "Food Lover's Market": "food-lovers",
     "Dis-Chem": "dis-chem",
-    "Game": "game",
+
     "OK Foods": "ok-foods",
   };
   for (const [name, id] of Object.entries(cases)) {

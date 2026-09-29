@@ -10,6 +10,8 @@ const smartBasket = require("./smart-basket");
 const smartBasketStore = require("./smart-basket-store");
 const searchCache = require("./search-cache");
 const suppliers = require("./suppliers");
+const locationApi = require("./location");
+const locationStore = require("./location-store");
 const { rankFrequentSearches } = require("./frequent-searches");
 const favourites = require("./favourites");
 const favouritesStore = require("./favourites-store");
@@ -58,46 +60,39 @@ const requireAuth = authRoutes.requireAuth;
 // SEARCH: real SerpAPI Google Shopping results + Groq recommendation.
 // Prices are shown in ZAR (R) throughout.
 // ---------------------------------------------------------------
-// Straight-line distance (km) between two points - fast, free, no API call.
-// Used for radius filtering. The "Directions" feature still gets real
-// road-routing distance/time from OpenRouteService separately.
-function haversineKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+// Branches of one approved supplier around a point (SerpAPI Google Maps).
+// location.js caches the result per area for 30 days and keeps only
+// branches whose name belongs to that supplier.
+async function fetchSupplierBranches(supplier, origin) {
+  const params = new URLSearchParams({
+    engine: "google_maps",
+    type: "search",
+    q: supplier.name,
+    ll: `@${origin.lat},${origin.lng},12z`,
+    api_key: process.env.SERPAPI_KEY,
+  });
+  const resp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
+  if (!resp.ok) throw new Error(`Maps lookup failed (${resp.status})`);
+  const data = await resp.json();
+  return (data.local_results || []).map(r => ({
+    name: r.title,
+    type: r.type || null,
+    address: r.address || null,
+    lat: r.gps_coordinates?.latitude,
+    lng: r.gps_coordinates?.longitude,
+  }));
 }
 
-// Resolves one store name to an approximate branch location near the anchor
-// point. Used to filter search results by real radius. Deduped by caller so
-// each unique store name is only resolved once per search, not once per item.
-async function resolveStoreLocation(storeName, anchorLat, anchorLng) {
-  try {
-    const params = new URLSearchParams({
-      engine: "google_maps",
-      type: "search",
-      q: storeName,
-      ll: `@${anchorLat},${anchorLng},13z`,
-      api_key: process.env.SERPAPI_KEY,
-    });
-    const resp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    const nearest = (data.local_results || [])[0];
-    const coords = nearest?.gps_coordinates;
-    if (!coords) return null;
-    return { lat: coords.latitude, lng: coords.longitude };
-  } catch (e) {
-    return null;
-  }
-}
+const locationService = locationApi.createLocationService({
+  store: locationStore,
+  geocode: text => geocodeLocation(text),
+  fetchBranches: fetchSupplierBranches,
+});
 
-// Max number of distinct stores we'll resolve-and-measure per search, to
-// keep SerpAPI usage bounded even when results span many different stores.
-const MAX_STORE_RESOLUTIONS_PER_SEARCH = 10;
+// Google Shopping results are pinned to one region (the student's exact
+// area is handled by nearby-shop distances instead - SerpAPI rejects
+// place names it doesn't know).
+const SHOPPING_LOCATION = process.env.SHOPPING_LOCATION || "Durban, KwaZulu-Natal, South Africa";
 
 app.post("/api/search", requireAuth, async (req, res) => {
   try {
@@ -113,16 +108,16 @@ app.post("/api/search", requireAuth, async (req, res) => {
     try {
       fetched = await searchCache.getOrFetchResults({
         store: smartBasketStore,
-        key: searchCache.searchCacheKey(item, location),
+        key: searchCache.searchCacheKey(item, SHOPPING_LOCATION),
         fetcher: async () => {
           const params = new URLSearchParams({
             engine: "google_shopping",
-            q: item,
+            q: String(item).trim().toLowerCase(),
             api_key: process.env.SERPAPI_KEY,
             gl: "za",
             hl: "en",
+            location: SHOPPING_LOCATION,
           });
-          if (location) params.set("location", location);
           const serpResp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
           if (!serpResp.ok) {
             throw Object.assign(new Error("SerpAPI request failed"), { status: 502, detail: await serpResp.text() });
@@ -153,65 +148,53 @@ app.post("/api/search", requireAuth, async (req, res) => {
     if (minPrice) rawResults = rawResults.filter(r => r.extracted_price == null || r.extracted_price >= Number(minPrice));
     if (maxPrice) rawResults = rawResults.filter(r => r.extracted_price == null || r.extracted_price <= Number(maxPrice));
 
-    // Determine an anchor point for radius filtering: prefer the typed
-    // location text (geocoded for free via Nominatim), fall back to the
-    // browser's live GPS if no location was typed.
-    let anchor = null;
-    if (location && location.trim()) {
-      anchor = await geocodeLocation(location.trim());
-    }
-    if (!anchor && originLat && originLng) {
-      anchor = { lat: originLat, lng: originLng };
-    }
-
-    let radiusNote = null;
-    if (radiusKm && anchor) {
-      const uniqueStores = [...new Set(rawResults.map(r => r.source).filter(Boolean))];
-      const storesToResolve = uniqueStores.slice(0, MAX_STORE_RESOLUTIONS_PER_SEARCH);
-      const storeCoords = {};
-      await Promise.all(storesToResolve.map(async (storeName) => {
-        storeCoords[storeName] = await resolveStoreLocation(storeName, anchor.lat, anchor.lng);
-      }));
-
-      rawResults = rawResults.map(r => {
-        const coords = storeCoords[r.source];
-        if (!coords) return { ...r, distanceKm: null };
-        const d = haversineKm(Number(anchor.lat), Number(anchor.lng), coords.lat, coords.lng);
-        return { ...r, distanceKm: +d.toFixed(1), storeLat: coords.lat, storeLng: coords.lng };
-      });
-
-      const before = rawResults.length;
-      // Only exclude items where distance is known AND over radius - never
-      // silently drop items we couldn't verify, per the "don't ignore parts"
-      // requirement. Those are kept and marked as unverified instead.
-      rawResults = rawResults.filter(r => r.distanceKm == null || r.distanceKm <= Number(radiusKm));
-      const excluded = before - rawResults.length;
-      const unresolvedCount = rawResults.filter(r => r.distanceKm == null).length;
-      radiusNote = `Applied ${radiusKm}km radius from ${location || "your location"}: ${excluded} result(s) outside range removed.` +
-        (unresolvedCount > 0 ? ` ${unresolvedCount} result(s) had unverifiable store locations and were kept regardless.` : "");
-    } else if (radiusKm && !anchor) {
-      radiusNote = "Distance radius could not be applied - no location available (type a location or allow browser location access).";
-    }
+    // Nearby shops: measure from GPS (sent only after the student allowed
+    // it), a typed area, or their saved area; nearby shops come first,
+    // farther ones are labelled, and "cheapest" means cheapest nearby.
+    const { origin, radiusKm: radius } = await locationService.resolveOrigin(req.userId, {
+      originLat, originLng, locationText: location, radiusKm,
+    });
+    rawResults = await locationService.annotateResults(rawResults, origin, radius);
+    const nearbyResults = rawResults.filter(r => r.proximity === "nearby");
+    const locationInfo = {
+      label: origin ? origin.label : null,
+      source: origin ? origin.source : null,
+      radiusKm: radius,
+      nearbyCount: nearbyResults.length,
+      farCount: rawResults.filter(r => r.proximity === "far").length,
+      unknownCount: rawResults.filter(r => r.proximity === "unknown").length,
+    };
+    const radiusNote = origin
+      ? `Within ${radius} km of ${origin.label}: ${nearbyResults.length} of ${rawResults.length} result(s).`
+      : "Set your shopping area to see the closest shops first.";
 
     if (rawResults.length === 0) {
       await sql`
         INSERT INTO search_history (user_id, item_query, budget, location)
         VALUES (${req.userId}, ${item}, ${maxPrice || null}, ${location || null})
       `;
-      return res.json({ results: [], recommendation: "No live results matched your filters. Try widening the price range or radius.", radiusNote, pricesCheckedAt, hiddenListings });
+      return res.json({
+        results: [],
+        recommendation: "None of our approved South African stores had this item in your price range. Try a simpler search term or a wider price range.",
+        radiusNote, pricesCheckedAt, hiddenListings, location: locationInfo,
+      });
     }
 
     const priceLine = [
       minPrice ? `minimum R${minPrice}` : null,
       maxPrice ? `maximum R${maxPrice}` : null,
     ].filter(Boolean).join(", ") || "no specific budget";
+    // The AI only weighs up nearby shops, unless none are nearby.
+    const forAi = (nearbyResults.length ? nearbyResults : rawResults).slice(0, 12).map(r => ({
+      title: r.title, price: r.price, store: r.supplierName, distanceKm: r.distanceKm,
+    }));
     const prompt = `
 You are a budget-conscious shopping assistant for a South African student. All prices are in South African Rand (ZAR, R).
 The user's price range: ${priceLine}.
-Here are real, live product search results (JSON) for the query "${item}", each optionally including a real distanceKm from the user's search location:
+Here are real, live product search results (JSON) for the query "${item}" from approved South African stores${origin ? `, with the distance in km from the student's area (${radius} km search radius)` : ""}:
 
-${JSON.stringify(rawResults, null, 2)}
-
+${JSON.stringify(forAi, null, 2)}
+${origin && !nearbyResults.length ? `\nNone of these stores has a branch within ${radius} km, so say that the options are farther away.\n` : ""}
 Recommend the ONE best option considering both price and distance (closer is better, all else equal). If nothing fits, say so and suggest the closest affordable option.
 Strict formatting rules: no markdown tables, no pipe characters, no bullet points, no headers, no bold/asterisks - plain prose only, maximum 45 words. Mention the store name and price.
 `.trim();
@@ -228,7 +211,7 @@ Strict formatting rules: no markdown tables, no pipe characters, no bullet point
       VALUES (${req.userId}, ${item}, ${maxPrice || null}, ${location || null})
     `;
 
-    res.json({ results: rawResults, recommendation, radiusNote, pricesCheckedAt, hiddenListings });
+    res.json({ results: rawResults, recommendation, radiusNote, pricesCheckedAt, hiddenListings, location: locationInfo });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Search failed", detail: err.message });
@@ -415,14 +398,18 @@ app.delete("/api/budget/:id", requireAuth, async (req, res) => {
 // place name like "Johannesburg" into real coordinates, so store searches
 // can be anchored to where the user actually means, not just their live GPS.
 async function geocodeLocation(text) {
-  const params = new URLSearchParams({ q: text, format: "json", limit: "1", countrycodes: "za" });
-  const resp = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-    headers: { "User-Agent": "EduBudgetAI-StudentProject/1.0" }, // required by Nominatim's usage policy
-  });
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  if (!data[0]) return null;
-  return { lat: data[0].lat, lng: data[0].lon };
+  try {
+    const params = new URLSearchParams({ q: text, format: "json", limit: "1", countrycodes: "za" });
+    const resp = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+      headers: { "User-Agent": "EduBudgetAI-StudentProject/1.0" }, // required by Nominatim's usage policy
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data[0]) return null;
+    return { lat: data[0].lat, lng: data[0].lon };
+  } catch (e) {
+    return null; // geocoder unreachable: treated as "not found", never a crash
+  }
 }
 
 // Reverse geocoding (free, no key) - turns exact coordinates into a
@@ -907,6 +894,17 @@ app.get("/api/specials", requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------
+// SHOPPING AREA: GET/PUT/DELETE /api/location (see location.js). Saving a
+// typed area geocodes it, so it's rate limited like other lookups.
+// ---------------------------------------------------------------
+locationApi.registerLocationRoutes(
+  app,
+  requireAuth,
+  locationApi.createLocationRoutes({ store: locationStore, geocode: text => geocodeLocation(text) }),
+  { limiter: rateLimit({ windowMs: 60 * 1000, max: 10, message: { error: "Too many changes, please wait a moment." } }) }
+);
+
+// ---------------------------------------------------------------
 // SMART BASKET + GROCERY LIST (see smart-basket.js)
 // ---------------------------------------------------------------
 // One-off price checks can call SerpAPI, so they're rate limited per IP.
@@ -918,7 +916,19 @@ const smartBasketPriceLimiter = rateLimit({
 smartBasket.registerSmartBasketRoutes(
   app,
   requireAuth,
-  smartBasket.createSmartBasketRoutes({ store: smartBasketStore }),
+  smartBasket.createSmartBasketRoutes({
+    store: smartBasketStore,
+    // "Cheapest" only among approved shops with a branch in the student's
+    // radius, once they've set a shopping area. Branch lookups are cached
+    // per area for 30 days, so only the first visit in an area pays for them.
+    nearbyFor: async userId => {
+      const { origin, radiusKm } = await locationService.resolveOrigin(userId);
+      if (!origin) return { nearbySupplierIds: null, area: null };
+      const ids = suppliers.SUPPLIERS.filter(s => s.active).map(s => s.id);
+      const nearbySupplierIds = await locationService.nearbySupplierIds(origin, radiusKm, ids, { maxLive: ids.length });
+      return { nearbySupplierIds, area: { label: origin.label, radiusKm } };
+    },
+  }),
   { priceLimiter: smartBasketPriceLimiter }
 );
 

@@ -371,8 +371,9 @@ async function loadSuggestions(store, userId, now = new Date()) {
 
 // Finds the current cheapest price for one item from store specials plus
 // cached or live SerpAPI results. `budget.live` is a shared counter of how
-// many live lookups this request may still make.
-async function priceItem(name, { store, fetchShopping, specials, budget, now = new Date() }) {
+// many live lookups this request may still make. `nearbySupplierIds` (a
+// Set, or null for no area) limits "cheapest" to shops near the student.
+async function priceItem(name, { store, fetchShopping, specials, budget, now = new Date(), nearbySupplierIds = null }) {
   const key = priceCacheKey(name);
   const matchingSpecials = specials.filter(s => titleMatches(name, s.item));
   let shoppingResults = [];
@@ -405,7 +406,7 @@ async function priceItem(name, { store, fetchShopping, specials, budget, now = n
     status = "ok";
   }
 
-  const best = pickCheapest(name, toOffers({ shoppingResults, specials: matchingSpecials }));
+  const best = pickCheapest(name, toOffers({ shoppingResults, specials: matchingSpecials }), { nearbySupplierIds });
   if (best) {
     // Specials are only for today's date range, so they count as checked now.
     return { price: best, priceStatus: "ok", priceCheckedAt: best.kind === "special" ? now : checkedAt };
@@ -416,7 +417,10 @@ async function priceItem(name, { store, fetchShopping, specials, budget, now = n
 // ---------------------------------------------------------------
 // ROUTES
 // ---------------------------------------------------------------
-function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, now = () => new Date() }) {
+// nearbyFor(userId) -> { nearbySupplierIds: Set | null, area: { label, radiusKm } | null }
+function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, now = () => new Date(), nearbyFor = null }) {
+  const nearbyContext = async userId => (nearbyFor ? nearbyFor(userId) : { nearbySupplierIds: null, area: null });
+
   const fail = (res, err, message) => {
     if (err.status) return res.status(err.status).json({ error: err.message });
     console.error(err);
@@ -429,14 +433,15 @@ function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, n
         const at = now();
         const { suggestions, personalised } = await loadSuggestions(store, req.userId, at);
         const specials = await store.getActiveSpecials();
+        const { nearbySupplierIds, area } = await nearbyContext(req.userId);
         const budget = { live: MAX_LIVE_PRICE_LOOKUPS };
         const priced = [];
         for (const s of suggestions) {
-          const p = await priceItem(s.name, { store, fetchShopping, specials, budget, now: at });
+          const p = await priceItem(s.name, { store, fetchShopping, specials, budget, now: at, nearbySupplierIds });
           priced.push({ itemKey: s.itemKey, name: s.name, source: s.source, reasons: s.reasons, ...p });
         }
         const remainingBudget = await store.getRemainingBudget(req.userId);
-        res.json({ suggestions: priced, personalised, remainingBudget, skipCooldownDays: SKIP_COOLDOWN_DAYS });
+        res.json({ suggestions: priced, personalised, remainingBudget, skipCooldownDays: SKIP_COOLDOWN_DAYS, area });
       } catch (err) {
         fail(res, err, "Failed to load Smart Basket");
       }
@@ -448,7 +453,8 @@ function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, n
         const name = typeof req.query.item === "string" ? req.query.item.trim().slice(0, 120) : "";
         if (!normaliseKey(name)) return res.status(400).json({ error: "item is required" });
         const specials = await store.getActiveSpecials();
-        const p = await priceItem(name, { store, fetchShopping, specials, budget: { live: 1 }, now: now() });
+        const { nearbySupplierIds } = await nearbyContext(req.userId);
+        const p = await priceItem(name, { store, fetchShopping, specials, budget: { live: 1 }, now: now(), nearbySupplierIds });
         res.json(p);
       } catch (err) {
         fail(res, err, "Price check failed");

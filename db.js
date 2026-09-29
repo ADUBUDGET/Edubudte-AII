@@ -23,6 +23,14 @@ async function initSchema() {
   `;
   // Safe no-op if the column already exists (older DBs created before this feature).
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS spending_target NUMERIC`;
+  // Shopping area for nearby shops (location.js): typed suburb/postcode or
+  // GPS (only after the student taps "Use my location"), rounded to ~100 m.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_label TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lng DOUBLE PRECISION`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_source TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS search_radius_km INTEGER DEFAULT 15`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS search_history (
@@ -144,6 +152,18 @@ async function initSchema() {
       query_key TEXT PRIMARY KEY,
       results JSONB NOT NULL,
       fetched_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+
+  // NEARBY SHOPS: cached branch locations per approved supplier per ~5 km
+  // area (see location.js). Shared, no personal data.
+  await sql`
+    CREATE TABLE IF NOT EXISTS store_locations (
+      supplier_id TEXT NOT NULL,
+      area_key TEXT NOT NULL,
+      branches JSONB NOT NULL,
+      fetched_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (supplier_id, area_key)
     )
   `;
 
