@@ -460,12 +460,23 @@
 
   async function saveFavourite(i) {
     const r = currentResults[i];
-    await fetch('/api/favourites', {
+    const resp = await fetch('/api/favourites', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemName: r.title, storeName: r.source, price: r.extracted_price || null, link: r.link || null }),
     });
-    alert('Saved to favourites.');
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      alert(data.error || 'Could not save to favourites.');
+      return;
+    }
+    // Saving a favourite with a price also logs it as a purchase and deducts
+    // it from the budget straight away - no need to log it again by hand.
+    if (data.loggedPurchase) {
+      alert('Saved to favourites - ' + formatZAR(data.deducted) + ' logged as a purchase and deducted from your budget.');
+    } else {
+      alert('Saved to favourites.');
+    }
   }
 
   // Resolves a store name to one exact nearby branch using the browser's

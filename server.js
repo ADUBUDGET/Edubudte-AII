@@ -6,6 +6,7 @@ const rateLimit = require("express-rate-limit");
 const Groq = require("groq-sdk");
 const { sql, initSchema } = require("./db");
 const authRoutes = require("./auth");
+const { buildPopularItems } = require("./popularItems");
 
 const app = express();
 app.use(express.json());
@@ -211,7 +212,7 @@ app.get("/api/deals", requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------
-// DASHBOARD: real budget summary + most frequently searched items
+// DASHBOARD: real budget summary + most frequently searched/bought items
 // ---------------------------------------------------------------
 app.get("/api/dashboard", requireAuth, async (req, res) => {
   try {
@@ -224,11 +225,17 @@ app.get("/api/dashboard", requireAuth, async (req, res) => {
       FROM search_history WHERE user_id = ${req.userId}
       GROUP BY item_query ORDER BY search_count DESC, last_searched DESC LIMIT 5
     `;
+    const topBought = await sql`
+      SELECT item_name, COUNT(*) AS buy_count, SUM(amount) AS total_spent, MAX(created_at) AS last_bought
+      FROM budget_log WHERE user_id = ${req.userId} AND item_name IS NOT NULL
+      GROUP BY item_name ORDER BY buy_count DESC, last_bought DESC LIMIT 5
+    `;
     res.json({
       monthlyBudget: Number(user.monthly_budget),
       totalSpent: Number(total_spent),
       remaining: Number(user.monthly_budget) - Number(total_spent),
       topSearches,
+      popularItems: buildPopularItems(topSearches, topBought),
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to load dashboard", detail: err.message });
@@ -290,6 +297,13 @@ Give one short, specific insight or suggestion (max 40 words) to help them manag
 // ---------------------------------------------------------------
 // FAVOURITES: full CRUD, scoped to the authenticated user
 // ---------------------------------------------------------------
+// Marking something as a favourite also logs it as a purchase and deducts it
+// from the student's budget straight away, so they don't have to separately
+// open "Log a Purchase" and type the same amount in again. If saving the
+// favourite itself fails, nothing is logged. If the favourite saves but the
+// log step fails for some reason, the favourite is still kept - the student
+// just doesn't lose it - and loggedPurchase comes back false so the page can
+// say so.
 app.post("/api/favourites", requireAuth, async (req, res) => {
   try {
     const { itemName, storeName, price, link } = req.body;
@@ -299,7 +313,30 @@ app.post("/api/favourites", requireAuth, async (req, res) => {
       VALUES (${req.userId}, ${itemName}, ${storeName || null}, ${price || null}, ${link || null})
       RETURNING *
     `;
-    res.status(201).json(row);
+
+    let loggedPurchase = false;
+    let deducted = 0;
+    const amount = Number(price);
+    if (price != null && Number.isFinite(amount) && amount > 0) {
+      try {
+        const [logRow] = await sql`
+          INSERT INTO budget_log (user_id, amount, category, description, item_name)
+          VALUES (${req.userId}, ${amount}, 'Favourites', ${"Marked as favourite: " + itemName}, ${itemName})
+          RETURNING id
+        `;
+        await sql`UPDATE favourites SET budget_log_id = ${logRow.id} WHERE id = ${row.id}`;
+        row.budget_log_id = logRow.id;
+        loggedPurchase = true;
+        deducted = amount;
+        // Best-effort: if the student just crossed 80%/100% of their budget,
+        // let them know. A failure here must never affect the response below.
+        generateBudgetNotifications(req.userId).catch(e => console.error("Budget notification check failed:", e.message));
+      } catch (logErr) {
+        console.error("Failed to auto-log favourite purchase:", logErr.message);
+      }
+    }
+
+    res.status(201).json({ ...row, loggedPurchase, deducted });
   } catch (err) {
     res.status(500).json({ error: "Failed to create favourite", detail: err.message });
   }
