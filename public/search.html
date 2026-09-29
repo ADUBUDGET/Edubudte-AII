@@ -191,6 +191,10 @@
 <span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
 <span class="font-label-sm">Basket</span>
 </button>
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors tap-highlight-transparent active:scale-95 transition-transform" onclick="location.href='/favourites.html'">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="font-label-sm">Favourites</span>
+</button>
 <button class="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors tap-highlight-transparent active:scale-95 transition-transform" onclick="location.href='/analytics.html'">
 <span class="material-symbols-outlined" data-icon="insights">insights</span>
 <span class="font-label-sm">Budget</span>
@@ -261,6 +265,8 @@
 </div>
 </div>
 </section>
+<!-- Most frequently searched: tap to search again -->
+<section aria-label="Most frequently searched" id="frequentSearches"></section>
 <!-- AI Recommendation Banner -->
 <section class="glass-panel rounded-3xl p-6 hidden" id="recommendationBanner">
 <div class="flex items-start gap-3">
@@ -314,26 +320,30 @@
 </div>
 <!-- BottomNavBar (Mobile Only) -->
 <!-- Determined active state: Shop (as this is a product search) -->
-<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-glass-surface dark:bg-glass-surface backdrop-blur-3xl border-t border-glass-stroke shadow-none rounded-t-xl border-glass-stroke/50 bg-black/40">
-<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16" onclick="location.href='/dashboard.html'">
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-1 py-2 pb-safe bg-glass-surface dark:bg-glass-surface backdrop-blur-3xl border-t border-glass-stroke shadow-none rounded-t-xl border-glass-stroke/50 bg-black/40">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform flex-1 min-w-0" onclick="location.href='/dashboard.html'">
 <span class="material-symbols-outlined text-2xl mb-1" data-icon="account_balance">account_balance</span>
-<span class="font-label-sm text-[10px] text-secondary text-white">Bank</span>
+<span class="text-[10px] text-secondary text-white text-[10px] leading-4 truncate max-w-full">Bank</span>
 </button>
-<button class="flex flex-col items-center justify-center bg-primary-container/20 text-primary rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16" onclick="location.href='/search.html'">
+<button class="flex flex-col items-center justify-center bg-primary-container/20 text-primary rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform flex-1 min-w-0" onclick="location.href='/search.html'">
 <span class="material-symbols-outlined text-2xl mb-1" data-icon="shopping_bag">shopping_bag</span>
-<span class="font-label-sm text-[10px] text-white">Shop</span>
+<span class="text-[10px] text-white text-[10px] leading-4 truncate max-w-full">Shop</span>
 </button>
-<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16" onclick="location.href='/smart-basket.html'">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform flex-1 min-w-0" onclick="location.href='/smart-basket.html'">
 <span class="material-symbols-outlined text-2xl mb-1" data-icon="shopping_basket">shopping_basket</span>
-<span class="font-label-sm text-[10px] text-secondary text-white">Basket</span>
+<span class="text-[10px] text-secondary text-white text-[10px] leading-4 truncate max-w-full">Basket</span>
 </button>
-<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16" onclick="location.href='/analytics.html'">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform flex-1 min-w-0" onclick="location.href='/favourites.html'">
+<span class="material-symbols-outlined text-2xl mb-1" data-icon="favorite">favorite</span>
+<span class="text-[10px] text-secondary text-white text-[10px] leading-4 truncate max-w-full">Favourites</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform flex-1 min-w-0" onclick="location.href='/analytics.html'">
 <span class="material-symbols-outlined text-2xl mb-1" data-icon="insights">insights</span>
-<span class="font-label-sm text-[10px] text-secondary text-white">Budget</span>
+<span class="text-[10px] text-secondary text-white text-[10px] leading-4 truncate max-w-full">Budget</span>
 </button>
-<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16" onclick="location.href='/favorites.html'">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform flex-1 min-w-0" onclick="location.href='/favorites.html'">
 <span class="material-symbols-outlined text-2xl mb-1" data-icon="person">person</span>
-<span class="font-label-sm text-[10px] text-secondary text-white">Profile</span>
+<span class="text-[10px] text-secondary text-white text-[10px] leading-4 truncate max-w-full">Profile</span>
 </button>
 </nav>
 
@@ -343,10 +353,16 @@
   let currentResults = [];
   let currentUser = null;
 
-  function renderResults(results, radiusNote) {
+  let lastRadiusNote = null;
+  let lastPricesCheckedAt = null;
+
+  function renderResults(results, radiusNote = lastRadiusNote) {
     const container = document.getElementById('resultsContainer');
     const countLabel = document.getElementById('resultsCountLabel');
     countLabel.textContent = `Found ${results.length} item${results.length === 1 ? '' : 's'} matching your search`;
+    if (lastPricesCheckedAt) {
+      countLabel.textContent += ` · prices checked ${ebTimeSince(new Date(lastPricesCheckedAt).getTime())}`;
+    }
     if (radiusNote) {
       countLabel.textContent += ` — ${radiusNote}`;
     }
@@ -404,7 +420,10 @@
     const minPrice = document.getElementById('minInput').value;
     const maxPrice = document.getElementById('maxInput').value;
     const radiusKm = document.getElementById('radiusManualInput').value;
-    if (!item) return alert('Enter an item to search for');
+    if (!item) {
+      showToast('Type what you are looking for first', { error: true });
+      return document.getElementById('itemInput').focus();
+    }
 
     const btnLabel = document.getElementById('searchBtnLabel');
     btnLabel.textContent = 'Searching...';
@@ -449,7 +468,21 @@
       }
 
       currentResults = data.results || [];
+      lastRadiusNote = data.radiusNote || null;
+      lastPricesCheckedAt = data.pricesCheckedAt || new Date().toISOString();
       renderResults(currentResults, data.radiusNote);
+
+      // Remember this search so coming back to Shop shows it again, and
+      // refresh "Most frequently searched" (and other caches a search affects).
+      ebCache.invalidateFor('/api/search');
+      ebCache.set(LAST_SEARCH_KEY, {
+        form: { item, location, minPrice, maxPrice, radiusKm },
+        results: currentResults,
+        recommendation: data.recommendation || null,
+        radiusNote: lastRadiusNote,
+        pricesCheckedAt: lastPricesCheckedAt,
+      });
+      loadFrequentSearches();
     } catch (err) {
       btnLabel.textContent = 'Search Local';
       document.getElementById('resultsContainer').innerHTML = '<p class="text-error col-span-full">Network error - is the server running?</p>';
@@ -468,12 +501,52 @@
 
   async function saveFavourite(i) {
     const r = currentResults[i];
-    await fetch('/api/favourites', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemName: r.title, storeName: r.source, price: r.extracted_price || null, link: r.link || null }),
-    });
-    alert('Saved to favourites.');
+    try {
+      const { data } = await apiSend('POST', '/api/favourites', {
+        itemName: r.title, storeName: r.source, price: r.extracted_price ?? null, link: r.link || null, thumbnail: r.thumbnail || null,
+      });
+      showToast(data.alreadyExisted ? 'Already in your favourites - saved price updated' : 'Added to favourites');
+    } catch (err) {
+      showToast("Couldn't save: " + err.message, { error: true });
+    }
+  }
+
+  // ---- Last search + most frequently searched ----
+  const LAST_SEARCH_KEY = '/page/search/last';
+
+  function runSearchFor(query) {
+    document.getElementById('itemInput').value = query;
+    doSearch();
+  }
+
+  function loadFrequentSearches() {
+    renderFrequentSearches(document.getElementById('frequentSearches'), { onPick: runSearchFor });
+  }
+
+  // Coming back to Shop shows the last search instead of an empty page.
+  // Prices older than the price max age are labelled, not shown as current.
+  function restoreLastSearch() {
+    const saved = ebCache.get(LAST_SEARCH_KEY);
+    if (!saved || !saved.data || !Array.isArray(saved.data.results)) return false;
+    const last = saved.data;
+    document.getElementById('itemInput').value = last.form.item || '';
+    document.getElementById('locationInput').value = last.form.location || '';
+    document.getElementById('minInput').value = last.form.minPrice || '';
+    if (last.form.maxPrice) document.getElementById('maxInput').value = last.form.maxPrice;
+    currentResults = last.results;
+    lastRadiusNote = last.radiusNote;
+    lastPricesCheckedAt = last.pricesCheckedAt;
+    if (last.recommendation) {
+      document.getElementById('recommendationText').textContent = last.recommendation;
+      document.getElementById('recommendationBanner').classList.remove('hidden');
+    }
+    renderResults(currentResults);
+    const age = Date.now() - new Date(last.pricesCheckedAt).getTime();
+    if (age > EB_MAX_AGE.prices) {
+      const countLabel = document.getElementById('resultsCountLabel');
+      countLabel.textContent = 'Your last search - prices may have changed since ' + ebTimeSince(new Date(last.pricesCheckedAt).getTime()) + '. Tap Search Local for current prices.';
+    }
+    return true;
   }
 
   // Resolves a store name to one exact nearby branch using the browser's
@@ -504,7 +577,7 @@
     };
 
     if (!navigator.geolocation) {
-      alert("Your browser doesn't support location - opening an approximate search instead.");
+      showToast("Your browser doesn't support location - opening an approximate search instead.");
       return openFallback();
     }
 
@@ -568,7 +641,7 @@
         }
       },
       () => {
-        alert('Location permission denied - opening an approximate search instead.');
+        showToast('Location permission denied - opening an approximate search instead.');
         openFallback();
       }
     );
@@ -657,12 +730,12 @@
     });
     recognition.addEventListener('error', (event) => {
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        alert('Voice search error: ' + event.error);
+        showToast('Voice search error: ' + event.error);
       }
     });
   } else {
     micBtn.addEventListener('click', () => {
-      alert("Voice search isn't supported in this browser - try Chrome or Edge.");
+      showToast("Voice search isn't supported in this browser - try Chrome or Edge.");
     });
   }
 
@@ -680,11 +753,13 @@
 
     await refreshBudgetStatus();
 
+    loadFrequentSearches();
     const params = new URLSearchParams(window.location.search);
     const q = params.get('q');
     if (q) {
-      document.getElementById('itemInput').value = q;
-      doSearch();
+      runSearchFor(q);
+    } else {
+      restoreLastSearch();
     }
   })();
 </script>

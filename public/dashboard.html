@@ -145,6 +145,10 @@
 <span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
 <span class="font-label-lg">Basket</span>
 </a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/favourites.html">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="font-label-lg">Favourites</span>
+</a>
 <a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/analytics.html">
 <span class="material-symbols-outlined" data-icon="insights">insights</span>
 <span class="font-label-lg">Budget</span>
@@ -175,6 +179,8 @@
 <input class="w-full bg-transparent border-none text-on-surface font-body-md placeholder-on-surface-variant glass-input rounded-3xl py-3 px-4 focus:ring-0" id="topSearchInput" placeholder="Search deals, transactions..." type="text"/>
 <button class="bg-primary text-on-primary rounded-full px-6 py-2 font-label-lg mx-1 hover:bg-surface-tint transition-colors shadow-none glow-accent" id="topSearchBtn">Find</button>
 </div>
+<!-- Most frequently searched: tap to search again -->
+<section aria-label="Most frequently searched" class="max-w-2xl -mt-4 mb-8" id="frequentSearches"></section>
 <!-- Dashboard Bento Grid -->
 <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
 <!-- Main Balance Card -->
@@ -229,26 +235,30 @@
 </main>
 </div>
 <!-- BottomNavBar (Mobile Only) -->
-<nav class="md:hidden bg-glass-surface dark:bg-glass-surface text-primary dark:text-primary font-label-sm text-label-sm fixed bottom-0 w-full rounded-t-xl backdrop-blur-3xl border-t border-glass-stroke shadow-none left-0 z-50 flex justify-around items-center px-4 py-2 pb-safe bg-surface-container-lowest">
-<button class="flex flex-col items-center justify-center bg-primary-container/20 rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/dashboard.html'">
+<nav class="md:hidden bg-glass-surface dark:bg-glass-surface text-primary dark:text-primary font-label-sm text-label-sm fixed bottom-0 w-full rounded-t-xl backdrop-blur-3xl border-t border-glass-stroke shadow-none left-0 z-50 flex justify-around items-center px-1 py-2 pb-safe bg-surface-container-lowest">
+<button class="flex flex-col items-center justify-center bg-primary-container/20 rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] tap-highlight-transparent active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/dashboard.html'">
 <span class="material-symbols-outlined mb-1" data-icon="account_balance" style="font-variation-settings: 'FILL' 1;">account_balance</span>
-<span class="">Bank</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Bank</span>
 </button>
-<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/search.html'">
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/search.html'">
 <span class="material-symbols-outlined mb-1" data-icon="shopping_bag">shopping_bag</span>
-<span class="">Shop</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Shop</span>
 </button>
-<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/smart-basket.html'">
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/smart-basket.html'">
 <span class="material-symbols-outlined mb-1" data-icon="shopping_basket">shopping_basket</span>
-<span class="">Basket</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Basket</span>
 </button>
-<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/analytics.html'">
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/favourites.html'">
+<span class="material-symbols-outlined mb-1" data-icon="favorite">favorite</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Favourites</span>
+</button>
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/analytics.html'">
 <span class="material-symbols-outlined mb-1" data-icon="insights">insights</span>
-<span class="">Budget</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Budget</span>
 </button>
-<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform w-16 text-on-surface" onclick="location.href='/favorites.html'">
+<button class="flex flex-col items-center justify-center p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/favorites.html'">
 <span class="material-symbols-outlined mb-1" data-icon="person">person</span>
-<span class="">Profile</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Profile</span>
 </button>
 </nav>
 <script src="/shared.js"></script>
@@ -257,15 +267,22 @@
     const user = await requireAuthOrRedirect();
     if (!user) return;
 
-    const [dashResp, analyticsResp, dealsResp] = await Promise.all([
-      fetch('/api/dashboard'),
-      fetch('/api/analytics'),
-      fetch('/api/deals'),
-    ]);
-    const dash = await dashResp.json();
-    const analytics = await analyticsResp.json();
-    const dealsData = await dealsResp.json();
+    // Each section shows saved data straight away, then refreshes.
+    renderFrequentSearches(document.getElementById('frequentSearches'), {
+      onPick: q => { window.location.href = '/search.html?q=' + encodeURIComponent(q); },
+    });
+    loadWithCache('/api/dashboard', { render: renderBalance, onError: err => showSectionError('balanceAmount', err) });
+    loadWithCache('/api/analytics', { render: renderCategories });
+    loadWithCache('/api/deals', { maxAgeMs: EB_MAX_AGE.prices, render: renderDeals, onError: () => {
+      document.getElementById('dealsContainer').innerHTML = '<p class="text-error col-span-3">Deals could not be loaded right now.</p>';
+    } });
 
+    function showSectionError(id, err) {
+      document.getElementById(id).textContent = '--';
+      showToast(err.message, { error: true });
+    }
+
+    function renderBalance(dash) {
     document.getElementById('balanceAmount').textContent = formatZAR(dash.remaining);
     document.getElementById('monthlyBudgetAmount').textContent = formatZAR(dash.monthlyBudget);
     document.getElementById('spentLabel').textContent = formatZAR(dash.totalSpent) + ' spent';
@@ -275,6 +292,9 @@
     const now = new Date();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     document.getElementById('daysLeftLabel').textContent = (lastDay - now.getDate()) + ' Days Left';
+    }
+
+    function renderCategories(analytics) {
 
     const iconMap = { food: 'restaurant', transport: 'local_taxi', books: 'menu_book', accommodation: 'home', other: 'category' };
     const cats = (analytics.byCategory || []).slice(0, 2);
@@ -290,6 +310,9 @@
       }
     });
 
+    }
+
+    function renderDeals(dealsData) {
     document.getElementById('dealsCacheNote').textContent = dealsData.cacheNote ? '(cached results)' : '';
     const dealsContainer = document.getElementById('dealsContainer');
     if (!dealsData.deals || dealsData.deals.length === 0) {
@@ -309,6 +332,7 @@
           </div>
         </div>
       `).join('');
+    }
     }
 
     function goSearch() {

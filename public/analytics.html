@@ -148,6 +148,10 @@
 <span class="material-symbols-outlined">shopping_basket</span>
 <span class="font-label-lg text-label-lg">Basket</span>
 </a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-on-surface hover:bg-white/5 transition-colors" href="/favourites.html">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-label-lg text-label-lg">Favourites</span>
+</a>
 <a class="flex items-center gap-4 px-4 py-3 rounded-xl bg-primary-container/20 text-primary glow-active" href="/analytics.html">
 <span class="material-symbols-outlined">insights</span>
 <span class="font-label-lg text-label-lg">Budget</span>
@@ -310,26 +314,30 @@
 </div>
 </main>
 <!-- Mobile Bottom Nav Bar -->
-<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-glass-surface backdrop-blur-3xl border-t border-glass-stroke shadow-none rounded-t-xl">
-<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95" href="/dashboard.html">
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-1 py-2 pb-safe bg-glass-surface backdrop-blur-3xl border-t border-glass-stroke shadow-none rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 flex-1 min-w-0" href="/dashboard.html">
 <span class="material-symbols-outlined mb-1">account_balance</span>
-<span class="font-label-sm text-label-sm">Bank</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Bank</span>
 </a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95" href="/search.html">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 flex-1 min-w-0" href="/search.html">
 <span class="material-symbols-outlined mb-1">shopping_bag</span>
-<span class="font-label-sm text-label-sm">Shop</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Shop</span>
 </a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95" href="/smart-basket.html">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 flex-1 min-w-0" href="/smart-basket.html">
 <span class="material-symbols-outlined mb-1">shopping_basket</span>
-<span class="font-label-sm text-label-sm">Basket</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Basket</span>
 </a>
-<a class="flex flex-col items-center justify-center bg-primary-container/20 text-primary rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95" href="/analytics.html">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 flex-1 min-w-0" href="/favourites.html">
+<span class="material-symbols-outlined mb-1">favorite</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Favourites</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container/20 text-primary rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 flex-1 min-w-0" href="/analytics.html">
 <span class="material-symbols-outlined mb-1">insights</span>
-<span class="font-label-sm text-label-sm">Budget</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Budget</span>
 </a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95" href="/favorites.html">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 flex-1 min-w-0" href="/favorites.html">
 <span class="material-symbols-outlined mb-1">person</span>
-<span class="font-label-sm text-label-sm">Profile</span>
+<span class="text-[10px] leading-4 truncate max-w-full">Profile</span>
 </a>
 </nav>
 <script src="/shared.js"></script>
@@ -339,13 +347,15 @@
     if (!user) return;
     document.getElementById('sidebarUserName').textContent = user.name;
 
-    const resp = await fetch('/api/analytics');
-    const data = await resp.json();
-    if (data.error) {
-      document.getElementById('budgetHealthText').textContent = 'Failed to load: ' + data.error;
-      return;
-    }
+    // Saved copy shows straight away; it's refreshed after purchases or
+    // budget changes (and at most once a minute otherwise).
+    loadWithCache('/api/analytics', {
+      render: renderAnalytics,
+      onError: err => { document.getElementById('budgetHealthText').textContent = 'Failed to load: ' + err.message; },
+    });
+  })();
 
+  function renderAnalytics(data) {
     document.getElementById('budgetHealthScore').textContent = data.budgetHealth;
     document.getElementById('budgetHealthText').textContent =
       data.budgetHealth >= 70 ? 'Good status - you are managing your budget well.' :
@@ -369,7 +379,10 @@
       const pct = Math.max(2, Math.round((val / maxDay) * 100));
       const bar = document.getElementById('bar-' + d);
       bar.style.height = pct + '%';
-      if (val === maxDay && val > 0) { bar.classList.add('bg-primary', 'glow-active'); bar.classList.remove('bg-surface-variant'); }
+      const top = val === maxDay && val > 0;
+      bar.classList.toggle('bg-primary', top);
+      bar.classList.toggle('glow-active', top);
+      bar.classList.toggle('bg-surface-variant', !top);
     });
 
     // Top categories - real, from your logged budget entries.
@@ -407,6 +420,6 @@
         `;
       }).join('');
     }
-  })();
+  }
 </script>
 </body></html>
