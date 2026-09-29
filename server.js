@@ -9,6 +9,7 @@ const authRoutes = require("./auth");
 const smartBasket = require("./smart-basket");
 const smartBasketStore = require("./smart-basket-store");
 const searchCache = require("./search-cache");
+const suppliers = require("./suppliers");
 const { rankFrequentSearches } = require("./frequent-searches");
 const favourites = require("./favourites");
 const favouritesStore = require("./favourites-store");
@@ -132,7 +133,7 @@ app.post("/api/search", requireAuth, async (req, res) => {
             price: r.price,
             extracted_price: r.extracted_price,
             source: r.source,
-            link: r.link,
+            link: r.product_link || r.link || null, // SerpAPI now returns product_link
             thumbnail: r.thumbnail,
           }));
         },
@@ -142,7 +143,11 @@ app.post("/api/search", requireAuth, async (req, res) => {
       throw err;
     }
     const pricesCheckedAt = fetched.fetchedAt;
-    let rawResults = fetched.results;
+    // Only products from approved suppliers (suppliers.js), with duplicate
+    // listings from the same shop collapsed to the cheapest.
+    const cleaned = suppliers.cleanShoppingResults(fetched.results);
+    let rawResults = cleaned.results;
+    const hiddenListings = Object.values(cleaned.rejected).reduce((a, b) => a + b, 0);
 
     // Respect Min/Max price - previously collected in the UI but never applied.
     if (minPrice) rawResults = rawResults.filter(r => r.extracted_price == null || r.extracted_price >= Number(minPrice));
@@ -193,7 +198,7 @@ app.post("/api/search", requireAuth, async (req, res) => {
         INSERT INTO search_history (user_id, item_query, budget, location)
         VALUES (${req.userId}, ${item}, ${maxPrice || null}, ${location || null})
       `;
-      return res.json({ results: [], recommendation: "No live results matched your filters. Try widening the price range or radius.", radiusNote, pricesCheckedAt });
+      return res.json({ results: [], recommendation: "No live results matched your filters. Try widening the price range or radius.", radiusNote, pricesCheckedAt, hiddenListings });
     }
 
     const priceLine = [
@@ -223,7 +228,7 @@ Strict formatting rules: no markdown tables, no pipe characters, no bullet point
       VALUES (${req.userId}, ${item}, ${maxPrice || null}, ${location || null})
     `;
 
-    res.json({ results: rawResults, recommendation, radiusNote, pricesCheckedAt });
+    res.json({ results: rawResults, recommendation, radiusNote, pricesCheckedAt, hiddenListings });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Search failed", detail: err.message });

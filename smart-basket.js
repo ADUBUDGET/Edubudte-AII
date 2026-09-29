@@ -38,14 +38,7 @@ const STAPLE_ITEMS = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Lowercase, letters/digits only, single spaces. "Brown Bread!" -> "brown bread".
-function normaliseKey(text) {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .slice(0, 100);
-}
+const { normaliseKey, singular } = require("./text-keys");
 
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -144,7 +137,6 @@ const ACCESSORY_WORDS = new Set([
   "frother", "holder", "dispenser", "bin", "container", "maker", "storage",
   "toy", "costume", "keyring", "keychain", "case", "cover", "mould", "mold",
 ]);
-const singular = w => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w);
 
 // True if every meaningful word of the query appears in the listing title
 // and the title isn't an accessory the student didn't ask for, so "milk"
@@ -189,7 +181,7 @@ function toOffers({ shoppingResults = [], specials = [] }) {
       title: r.title,
       price: r.extracted_price != null ? Number(r.extracted_price) : NaN,
       store: r.source || null,
-      link: r.link || null,
+      link: r.product_link || r.link || null,
       thumbnail: r.thumbnail || null,
     });
   }
@@ -210,20 +202,9 @@ function toOffers({ shoppingResults = [], specials = [] }) {
 
 const round2 = n => Math.round(n * 100) / 100;
 
-// South African retail chains students actually shop at. Matched as whole
-// words in the normalised store name, so "Checkers Sixty60", "makro.co.za"
-// and "Pick n Pay Online" all count.
-const SA_RETAILER_PATTERN = new RegExp("\\b(" + [
-  "shoprite", "checkers", "pick n pay", "picknpay", "pnp", "spar", "superspar", "kwikspar",
-  "woolworths", "boxer", "makro", "game", "usave", "ok foods", "ok grocer",
-  "food lover s market", "food lovers market", "clicks", "dis chem", "dischem",
-].join("|") + ")\\b");
-
-// Known chains, plus any South African online shop (a .co.za store name).
-function isSaRetailer(store) {
-  const s = String(store || "").toLowerCase();
-  return SA_RETAILER_PATTERN.test(normaliseKey(store)) || /\.co\.za\b/.test(s);
-}
+// Only approved suppliers (suppliers.js) count - foreign shops, marketplaces
+// and unknown sellers are never used for a price.
+const { matchSupplier } = require("./suppliers");
 
 // A listing priced under this fraction of the next cheapest one is treated
 // as a listing error, e.g. R5 brown bread when the next is R28.99.
@@ -239,27 +220,30 @@ function dropPriceOutliers(sorted) {
   return out;
 }
 
-// Picks the cheapest offer from a South African retailer (or the team's
-// store specials) that genuinely matches the item, and compares it with the
-// cheapest offer from a *different* SA retailer. Returns null if no SA
-// retailer has a relevant, priced offer - never a guessed or foreign price.
-function pickCheapest(query, offers) {
+// Picks the cheapest offer from an approved supplier (including the team's
+// store specials, which must also name an approved supplier) that genuinely
+// matches the item, and compares it with the cheapest offer from a
+// *different* supplier. `nearbySupplierIds` (a Set), when given, limits the
+// choice to suppliers with a branch inside the student's search radius.
+// Returns null if nothing qualifies - never a guessed or foreign price.
+function pickCheapest(query, offers, { nearbySupplierIds = null } = {}) {
   const local = offers
     .filter(o => Number.isFinite(o.price) && o.price > 0 && titleMatches(query, o.title))
-    .filter(o => o.kind === "special" || isSaRetailer(o.store))
+    .map(o => ({ ...o, supplier: matchSupplier(o.store) }))
+    .filter(o => o.supplier && (!nearbySupplierIds || nearbySupplierIds.has(o.supplier.id)))
     .sort((a, b) => a.price - b.price);
   const relevant = dropPriceOutliers(local);
   if (relevant.length === 0) return null;
 
   const best = relevant[0];
-  const storeKey = s => normaliseKey(s);
-  const next = relevant.find(o => storeKey(o.store) !== storeKey(best.store)) || null;
-  const stores = new Set(relevant.map(o => storeKey(o.store)).filter(Boolean));
+  const next = relevant.find(o => o.supplier.id !== best.supplier.id) || null;
+  const stores = new Set(relevant.map(o => o.supplier.id));
 
   return {
     title: best.title,
     price: best.price,
-    store: best.store,
+    store: best.supplier.name,
+    supplierId: best.supplier.id,
     link: best.link,
     thumbnail: best.thumbnail || relevant.find(o => o.thumbnail)?.thumbnail || null,
     size: parseSize(best.title),
@@ -268,7 +252,7 @@ function pickCheapest(query, offers) {
     endsOn: best.kind === "special" ? best.endsOn : null,
     storesCompared: stores.size,
     offersCompared: relevant.length,
-    nextCheapest: next ? { store: next.store, price: next.price } : null,
+    nextCheapest: next ? { store: next.supplier.name, price: next.price } : null,
     savingVsNext: next ? round2(next.price - best.price) : null,
   };
 }
@@ -302,7 +286,7 @@ async function fetchGoogleShopping(query) {
     price: r.price,
     extracted_price: r.extracted_price,
     source: r.source,
-    link: r.link,
+    link: r.product_link || r.link || null,
     thumbnail: r.thumbnail,
   }));
 }
@@ -576,7 +560,7 @@ module.exports = {
   titleMatches,
   parseSize,
   toOffers,
-  isSaRetailer,
+  matchSupplier,
   dropPriceOutliers,
   pickCheapest,
   addItemToList,

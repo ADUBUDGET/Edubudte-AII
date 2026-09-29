@@ -428,12 +428,12 @@ test("grocery list routes accept numeric ids and 404 anything else", async () =>
 // ---------------------------------------------------------------
 // South African retailers and price outliers
 // ---------------------------------------------------------------
-test("recognises South African retail chains by store name", () => {
+test("only approved suppliers count (see suppliers.test.js for the full list)", () => {
   for (const s of ["Shoprite", "Checkers Sixty60", "Pick n Pay Online", "makro.co.za", "SPAR", "Food Lover's Market", "Dis-Chem", "Woolworths"]) {
-    assert.ok(sb.isSaRetailer(s), s);
+    assert.ok(sb.matchSupplier(s), s);
   }
-  for (const s of ["Musafir Cash & Carry", "Desertcart.ae", "Sparkle Deals", "Takealot"]) {
-    assert.ok(!sb.isSaRetailer(s), s);
+  for (const s of ["Musafir Cash & Carry", "Desertcart.ae", "Sparkle Deals", "Takealot", "IndiaBazaar.co.za"]) {
+    assert.equal(sb.matchSupplier(s), null, s);
   }
 });
 
@@ -448,7 +448,8 @@ test("drops a listing priced far below the others (e.g. R0.90 rice)", () => {
   });
   const best = sb.pickCheapest("rice", offers);
   assert.equal(best.price, 8.95);
-  assert.equal(best.store, "makro.co.za");
+  assert.equal(best.store, "Makro"); // shown under the supplier's standard name
+  assert.equal(best.supplierId, "makro");
 });
 
 test("brown bread: R5 outlier is ignored and a Shoprite price wins over other stores", () => {
@@ -490,10 +491,29 @@ test("never falls back to foreign shops or non-grocery listings", () => {
   assert.equal(sb.pickCheapest("pilchards", offers), null);
 });
 
-test("South African .co.za online shops count as SA retailers", () => {
-  assert.ok(sb.isSaRetailer("IndiaBazaar.co.za"));
-  const best = sb.pickCheapest("rice", sb.toOffers({ shoppingResults: [{ title: "Basmati Rice 1kg", extracted_price: 39, source: "IndiaBazaar.co.za" }] }));
-  assert.equal(best.store, "IndiaBazaar.co.za");
+test("unapproved .co.za shops and marketplaces are not used for prices", () => {
+  const offers = sb.toOffers({ shoppingResults: [
+    { title: "Basmati Rice 1kg", extracted_price: 39, source: "IndiaBazaar.co.za" },
+    { title: "Basmati Rice 1kg", extracted_price: 35, source: "amazon.co.za" },
+  ] });
+  assert.equal(sb.pickCheapest("rice", offers), null);
+});
+
+test("with a nearby filter, only suppliers inside the radius are compared", () => {
+  const offers = sb.toOffers({ shoppingResults: [
+    { title: "Tastic Rice 2kg", extracted_price: 39.99, source: "Makro" },
+    { title: "Tastic Rice 2kg", extracted_price: 44.99, source: "Shoprite" },
+    { title: "Tastic Rice 2kg", extracted_price: 46.99, source: "Checkers" },
+  ] });
+  const best = sb.pickCheapest("rice", offers, { nearbySupplierIds: new Set(["shoprite", "checkers"]) });
+  assert.equal(best.store, "Shoprite");
+  assert.deepEqual(best.nextCheapest, { store: "Checkers", price: 46.99 });
+  assert.equal(sb.pickCheapest("rice", offers, { nearbySupplierIds: new Set() }), null);
+});
+
+test("product links come from SerpAPI's product_link", () => {
+  const [offer] = sb.toOffers({ shoppingResults: [{ title: "Rice", extracted_price: 20, source: "Shoprite", product_link: "https://www.google.com/search?ibp=oshop&prds=catalogid:1" }] });
+  assert.match(offer.link, /catalogid:1/);
 });
 
 test("outlier check compares against the next cheapest SA listing", () => {

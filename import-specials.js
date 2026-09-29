@@ -10,6 +10,7 @@
 // Rows that already exist (same store, item and dates) are skipped, so re-importing is safe.
 require("dotenv").config();
 const fs = require("fs");
+const { matchSupplier, SUPPLIERS } = require("./suppliers");
 
 function detectDelimiter(text) {
   const firstLine = text.split(/\r?\n/, 1)[0] || "";
@@ -129,6 +130,12 @@ function normaliseRow(cells, idx) {
   if (!item) errors.push("item is empty");
   if (store.length > 100) errors.push("store is longer than 100 characters");
   if (item.length > 200) errors.push("item is longer than 200 characters");
+  // Only approved suppliers (suppliers.js); the store is saved under its
+  // standard name so "PnP" and "Pick n Pay" don't become two shops.
+  const supplier = store ? matchSupplier(store) : null;
+  if (store && !supplier) {
+    errors.push(`"${store}" is not an approved store (see suppliers.js: ${SUPPLIERS.filter(s => s.active).map(s => s.name).join(", ")})`);
+  }
 
   const price = parsePrice(get("price"));
   const wasPrice = parsePrice(get("was_price"));
@@ -144,7 +151,7 @@ function normaliseRow(cells, idx) {
   if (errors.length) return { errors };
   return {
     row: {
-      store,
+      store: supplier.name,
       item,
       price: price.value,
       was_price: wasPrice.value,
