@@ -205,7 +205,7 @@
 <div>
 <div class="flex justify-between items-center mb-2">
 <label class="block font-label-lg text-label-lg text-on-surface" for="login-password">Password</label>
-<a class="font-label-sm text-label-sm text-primary hover:underline" href="#">Forgot?</a>
+<a class="font-label-sm text-label-sm text-primary hover:underline" href="#forgot" id="show-forgot">Forgot password?</a>
 </div>
 <div class="relative">
 <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface" style="font-variation-settings: &quot;FILL&quot; 0;">lock</span>
@@ -269,6 +269,40 @@
 </div>
 </form>
 </div>
+<!-- Forgot Password: emails a single-use reset link -->
+<div class="form-container hidden-form" id="forgot-form" aria-hidden="true">
+<h2 class="font-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-headline-lg-mobile mb-3 text-on-surface" id="forgot-heading" tabindex="-1">Reset your password</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-8">Enter the email you signed up with and we'll send you a link to choose a new password.</p>
+<div id="forgot-request">
+<p id="forgot-error" class="hidden text-sm text-error mb-4" role="alert"></p>
+<form class="space-y-6" id="forgotFormEl" novalidate>
+<div>
+<label class="block font-label-lg text-label-lg mb-2 text-on-surface" for="forgot-email">Email Address</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface" style="font-variation-settings: &quot;FILL&quot; 0;">mail</span>
+<input aria-describedby="forgot-email-hint" autocomplete="email" class="glass-input w-full rounded-3xl py-4 pl-12 pr-4 font-body-md text-body-md placeholder-white/50 text-on-surface" id="forgot-email" inputmode="email" placeholder="student@university.edu" required="" type="email">
+</div>
+<p class="text-sm text-error mt-2 hidden" id="forgot-email-hint"></p>
+</div>
+<div class="pt-2 space-y-5">
+<button class="btn-primary w-full rounded-full py-4 font-label-lg text-label-lg flex items-center justify-center gap-2 disabled:opacity-60" id="forgot-submit" type="submit">
+<span id="forgot-submit-label">Send reset link</span>
+<span class="material-symbols-outlined text-[20px] text-on-surface">send</span>
+</button>
+</div>
+</form>
+</div>
+<div class="hidden" id="forgot-sent" role="status">
+<div class="flex items-start gap-3 p-4 rounded-2xl bg-white/5 border border-glass-stroke mb-6">
+<span class="material-symbols-outlined text-primary">mark_email_read</span>
+<p class="font-body-md text-body-md text-on-surface" id="forgot-sent-text"></p>
+</div>
+<p class="font-body-md text-sm text-on-surface-variant mb-6">Didn't get it? Check your spam folder, or <button class="text-primary hover:underline" id="forgot-again" type="button">send another link</button>.</p>
+</div>
+<div class="text-center mt-6">
+<button class="font-label-lg text-label-lg text-primary hover:underline" id="forgot-back" type="button">Back to Sign In</button>
+</div>
+</div>
 </div>
 <div class="mt-10 text-center">
 <p class="font-label-sm text-label-sm text-secondary">By continuing, you agree to our <a class="text-primary hover:underline" href="#">Terms of Service</a> and <a class="text-primary hover:underline" href="#">Privacy Policy</a>.</p>
@@ -276,31 +310,104 @@
 </main>
 <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const loginForm = document.getElementById('login-form');
-            const registerForm = document.getElementById('register-form');
-            const showRegisterBtn = document.getElementById('show-register');
-            const showLoginBtn = document.getElementById('show-login');
+            const panels = ['login-form', 'register-form', 'forgot-form'].map(id => document.getElementById(id));
 
-            showRegisterBtn.addEventListener('click', () => {
-                loginForm.classList.remove('active-form');
-                loginForm.classList.add('hidden-form');
-                
+            // Shows one panel (sign in / create account / forgot password) and
+            // moves keyboard focus into it.
+            function showForm(id, focusId) {
+                panels.forEach(p => {
+                    p.classList.remove('active-form');
+                    p.classList.add('hidden-form');
+                    p.setAttribute('aria-hidden', 'true');
+                });
                 // Small delay to allow fade out before fading in
                 setTimeout(() => {
-                    registerForm.classList.remove('hidden-form');
-                    registerForm.classList.add('active-form');
+                    const panel = document.getElementById(id);
+                    panel.classList.remove('hidden-form');
+                    panel.classList.add('active-form');
+                    panel.removeAttribute('aria-hidden');
+                    if (focusId) document.getElementById(focusId).focus();
                 }, 50);
+            }
+
+            document.getElementById('show-register').addEventListener('click', () => showForm('register-form', 'reg-name'));
+            document.getElementById('show-login').addEventListener('click', () => showForm('login-form', 'login-email'));
+            document.getElementById('show-forgot').addEventListener('click', (e) => {
+                e.preventDefault();
+                openForgot();
+            });
+            document.getElementById('forgot-back').addEventListener('click', () => {
+                history.replaceState(null, '', location.pathname);
+                showForm('login-form', 'login-email');
             });
 
-            showLoginBtn.addEventListener('click', () => {
-                registerForm.classList.remove('active-form');
-                registerForm.classList.add('hidden-form');
-                
-                setTimeout(() => {
-                    loginForm.classList.remove('hidden-form');
-                    loginForm.classList.add('active-form');
-                }, 50);
+            // ---- Forgot password ----
+            const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            function openForgot() {
+                const typed = document.getElementById('login-email').value.trim();
+                if (typed && !document.getElementById('forgot-email').value) document.getElementById('forgot-email').value = typed;
+                document.getElementById('forgot-request').classList.remove('hidden');
+                document.getElementById('forgot-sent').classList.add('hidden');
+                history.replaceState(null, '', '#forgot');
+                showForm('forgot-form', 'forgot-email');
+            }
+            function setEmailHint(message) {
+                const input = document.getElementById('forgot-email');
+                const hint = document.getElementById('forgot-email-hint');
+                hint.textContent = message || '';
+                hint.classList.toggle('hidden', !message);
+                if (message) input.setAttribute('aria-invalid', 'true');
+                else input.removeAttribute('aria-invalid');
+            }
+            document.getElementById('forgot-email').addEventListener('input', () => setEmailHint(''));
+            document.getElementById('forgotFormEl').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                hideError('forgot-error');
+                const email = document.getElementById('forgot-email').value.trim();
+                if (!email) return setEmailHint('Enter your email address.');
+                if (!EMAIL_PATTERN.test(email)) return setEmailHint('That doesn\'t look like an email address - check for typos, like a missing @.');
+                const button = document.getElementById('forgot-submit');
+                const label = document.getElementById('forgot-submit-label');
+                button.disabled = true;
+                label.textContent = 'Sending...';
+                try {
+                    const resp = await fetch('/api/auth/forgot-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email }),
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok) {
+                        if (resp.status === 400) setEmailHint(data.error || 'Enter a valid email address.');
+                        else showError('forgot-error', data.error || 'Something went wrong. Please try again.');
+                        return;
+                    }
+                    document.getElementById('forgot-sent-text').textContent = data.message;
+                    document.getElementById('forgot-request').classList.add('hidden');
+                    document.getElementById('forgot-sent').classList.remove('hidden');
+                } catch (err) {
+                    showError('forgot-error', 'Can\'t reach EduBudget right now. Check your connection and try again.');
+                } finally {
+                    button.disabled = false;
+                    label.textContent = 'Send reset link';
+                }
             });
+            document.getElementById('forgot-again').addEventListener('click', () => {
+                document.getElementById('forgot-sent').classList.add('hidden');
+                document.getElementById('forgot-request').classList.remove('hidden');
+                document.getElementById('forgot-email').focus();
+            });
+            // Links like /login.html#forgot (e.g. "request a new link") open it directly.
+            if (location.hash === '#forgot') openForgot();
+
+            // After a successful reset, the reset page sends students here to sign in.
+            if (new URLSearchParams(location.search).get('reset') === 'done') {
+                const note = document.getElementById('login-error');
+                note.textContent = 'Password updated. Sign in with your new password.';
+                note.classList.remove('hidden', 'text-error');
+                note.classList.add('text-primary');
+                history.replaceState(null, '', location.pathname);
+            }
 
             // If already logged in, skip straight to the dashboard.
             fetch('/api/auth/me').then(r => { if (r.ok) window.location.href = '/dashboard.html'; });
