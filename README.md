@@ -70,6 +70,8 @@ categories and stores the real results.
 | `/analytics.html` ("Budget") | Real budget health score, real 7-day spending chart, real category breakdown, one real AI-generated insight from your actual spending. |
 | `/favorites.html` ("Profile") | Real profile info, editable monthly budget, real favourites (full CRUD), real "Log a Purchase" budget entry form (full CRUD), sign out. |
 | `/smart-basket.html` ("Basket") | Personalised, swipeable product suggestions with the cheapest current price, plus the student's grocery list. See **Smart Basket** below. |
+| `/favourites.html` ("Favourites") | Saved products with a Purchased tick, filters and "Start a new shop". See **Favourites** below. |
+| `/reset-password.html` | Where the emailed reset link lands: choose a new password. See **Forgot password** below. |
 
 ## Smart Basket
 
@@ -107,16 +109,78 @@ reach the top of the stack (`/api/smart-basket/price`, rate limited to 10/min).
 **Tables**: `grocery_list`, `smart_basket_state` (skipped/hidden per user) and `price_cache`,
 all created automatically on startup.
 
+## Favourites
+
+`/favourites.html` (the "Favourites" tab) lists saved products. Each has a **Purchased**
+checkbox: ticked items stay in the list, struck through, and can be unticked. Filters (All /
+To buy / Purchased) are remembered, and **Start a new shop** unticks everything at once.
+Saving the same product again (any spelling/case) doesn't add a duplicate - it updates the
+saved store and price. API: `GET/POST /api/favourites`, `PUT /api/favourites/:id`
+(`{ purchased: true|false }` or edits), `DELETE /api/favourites/:id`,
+`POST /api/favourites/clear-purchased`. Logic in `favourites.js`.
+
+(`/favorites.html` is still the Profile page; the name predates this tab.)
+
+## Most frequently searched
+
+A row of chips on Shop and Bank built from the student's own searches in the last 90 days
+(`GET /api/search/frequent`, ranking in `frequent-searches.js`). "Eggs", "egg" and
+" EGGS " count as one; blank, number-only, sentence-long and old searches are left out.
+Tapping a chip runs that search. New students see a few starter searches instead.
+
+## Caching
+
+- **In the browser** (`shared.js`): API responses are kept in `localStorage` under the
+  signed-in student's id, so pages open instantly and still show saved data offline (with
+  a banner). The cache is wiped on sign-out or when a different student signs in, and
+  never contains passwords or the session token (an httpOnly cookie). Saved data is
+  refreshed after 1 minute; anything with prices after 10 minutes, and older prices are
+  labelled with their age rather than shown as current. Every change made through
+  `apiSend()` clears the cached data it affects (e.g. logging a purchase refreshes Bank,
+  Budget and Smart Basket).
+- **On the server**: Shop searches reuse the same SerpAPI results for 6 hours
+  (`search-cache.js`, shared `price_cache` table, no personal data) and report when the
+  prices were checked. Smart Basket prices are cached for 24 hours.
+
+## Forgot password
+
+"Forgot password?" on the sign-in card asks for an email and sends a single-use link to
+`/reset-password.html` that expires after 30 minutes (`password-reset.js`). The reply is the
+same whether or not an account exists, only a hash of the token is stored, asking again
+cancels older links, and emails/tokens/passwords are never logged.
+
+**Needs email set up** (the same settings the welcome/notification emails use). Add to `.env`:
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=your-app-email@gmail.com
+SMTP_PASS=your 16-character Gmail app password
+MAIL_FROM=EduBudget AI <your-app-email@gmail.com>
+APP_URL=http://localhost:3000
+```
+
+`APP_URL` must be the address students open the app on, because the reset link uses it.
+Without SMTP settings the form says reset emails aren't available instead of pretending to
+send one.
+
 ## Tests
 
 ```bash
 npm test
 ```
 
-Runs the Smart Basket tests (`test/smart-basket.test.js`) with Node's built-in test runner.
-They cover recommendation ranking/filtering, fallback suggestions, skip/hide/add actions,
-duplicate prevention and cheapest-price selection. They use an in-memory store, so no
-database, API keys or network are needed.
+Runs every test in `test/` with Node's built-in test runner - no database, API keys or
+network needed (in-memory stores and fakes):
+
+- `smart-basket.test.js` - recommendations, skip/hide/add, duplicates, cheapest SA price
+- `favourites.test.js` - duplicates, purchased tick and undo, per-user access
+- `frequent-searches.test.js` - frequent-search ranking and the Shop search cache
+- `password-reset.test.js` - request, expiry, single use, validation, sign-in afterwards
+- `cache.test.js` - the browser cache: per-user, clearing on changes/sign-out, limits
+- `layout.test.js` - every page can scroll, content clears the mobile nav, dialogs scroll
+
+There is no linter or build step in this project; `node --check` catches syntax errors.
 
 ## Security notes (what "production-grade" means here)
 
@@ -125,10 +189,11 @@ database, API keys or network are needed.
 - All data endpoints require a valid session and only ever read/write the authenticated
   user's own rows (fixed a real hole from the earlier anonymous-ID version, where any
   client could claim to be any user).
-- Rate limiting on login/register endpoints.
+- Rate limiting on login/register and password-reset endpoints.
+- Password resets: single-use, 30-minute links; only token hashes stored.
 
-**Not included** (would need additional services/scope): email verification, password
-reset via email (needs an email-sending API), 2FA, CSRF tokens beyond sameSite cookies,
+**Not included** (would need additional services/scope): email verification, signing out
+other devices after a password reset (JWT sessions can't be revoked yet), 2FA, CSRF tokens beyond sameSite cookies,
 HTTPS (add this yourself before deploying anywhere public - cookies are marked `secure`
 automatically once `NODE_ENV=production` is set behind HTTPS).
 
@@ -137,7 +202,6 @@ automatically once `NODE_ENV=production` is set behind HTTPS).
 - Uber/taxi costs are formula-based estimates (`server.js`, near `UBER_BASE_FARE` etc.),
   not live fares from either service - no public free API exists for that.
 - Trending Deals are cached, not live per page load (quota protection).
-- No password reset flow (needs an email provider).
 - Distance filtering on the Search page's radius slider is visual only; actual radius
   filtering of results isn't implemented yet (SerpAPI's `location` param biases
   results regionally but doesn't hard-filter by exact km).
