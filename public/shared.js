@@ -269,11 +269,11 @@ function renderFrequentSearches(container, { onPick }) {
     if (isStarter) head.appendChild(ebEl("span", "eb-freq-note", "Your top searches will appear here"));
     container.appendChild(head);
     const row = ebEl("div", "eb-freq-row");
-    row.setAttribute("role", "list");
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", isStarter ? "Suggested searches" : "Most frequently searched");
     items.forEach(item => {
       const chip = ebEl("button", "eb-chip");
       chip.type = "button";
-      chip.setAttribute("role", "listitem");
       chip.appendChild(ebEl("span", null, item.label));
       if (item.count > 1) chip.appendChild(ebEl("span", "eb-chip-count", "×" + item.count));
       chip.setAttribute("aria-label", item.count > 1 ? `Search for ${item.label}, searched ${item.count} times` : `Search for ${item.label}`);
@@ -335,7 +335,7 @@ const EB_CSS = `
 .eb-toast-error{color:#ffb4ab;border-color:rgba(255,180,171,.4)}
 .eb-offline{position:fixed;left:0;right:0;top:0;z-index:95;padding:6px 16px;background:#6e3900;color:#ffdcc3;font:600 13px/18px 'Plus Jakarta Sans',sans-serif;text-align:center}
 .eb-offline[hidden]{display:none}
-.eb-freq-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 4px 8px}
+.eb-freq-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;margin:0 4px 8px}
 .eb-freq-title{font:700 12px/16px 'Plus Jakarta Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#e2e2e2}
 .eb-freq-note{font:400 12px/16px 'Plus Jakarta Sans',sans-serif;color:#ddc1ae}
 .eb-freq-row{display:flex;gap:8px;overflow-x:auto;padding:2px 4px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:thin}

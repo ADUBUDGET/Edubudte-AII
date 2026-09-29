@@ -169,12 +169,14 @@
             left: 0;
             width: 100%;
             transform: scale(0.95);
+            visibility: hidden; /* out of the tab order and screen readers */
         }
         .active-form {
             opacity: 1;
             pointer-events: auto;
             position: relative;
             transform: scale(1);
+            visibility: visible;
             z-index: 10;
         }
     </style>
@@ -225,7 +227,7 @@
 </form>
 </div>
 <!-- Registration Form -->
-<div class="form-container hidden-form" id="register-form">
+<div class="form-container hidden-form" id="register-form" aria-hidden="true">
 <h2 class="font-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-headline-lg-mobile mb-8 text-on-surface">Create Account</h2>
 <p id="register-error" class="hidden text-sm text-error mb-4"></p>
 <form class="space-y-6" id="registerFormEl">
