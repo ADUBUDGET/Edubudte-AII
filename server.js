@@ -8,6 +8,8 @@ const { sql, initSchema } = require("./db");
 const authRoutes = require("./auth");
 const smartBasket = require("./smart-basket");
 const smartBasketStore = require("./smart-basket-store");
+const searchCache = require("./search-cache");
+const { rankFrequentSearches } = require("./frequent-searches");
 
 const app = express();
 app.use(express.json());
@@ -88,28 +90,43 @@ app.post("/api/search", requireAuth, async (req, res) => {
       return res.status(500).json({ error: "SERPAPI_KEY not configured on server" });
     }
 
-    const params = new URLSearchParams({
-      engine: "google_shopping",
-      q: item,
-      api_key: process.env.SERPAPI_KEY,
-      gl: "za",
-      hl: "en",
-    });
-    if (location) params.set("location", location);
-
-    const serpResp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
-    if (!serpResp.ok) {
-      return res.status(502).json({ error: "SerpAPI request failed", detail: await serpResp.text() });
+    // Same search (term + typed location) within a few hours reuses the
+    // cached real results instead of another paid SerpAPI call.
+    let fetched;
+    try {
+      fetched = await searchCache.getOrFetchResults({
+        store: smartBasketStore,
+        key: searchCache.searchCacheKey(item, location),
+        fetcher: async () => {
+          const params = new URLSearchParams({
+            engine: "google_shopping",
+            q: item,
+            api_key: process.env.SERPAPI_KEY,
+            gl: "za",
+            hl: "en",
+          });
+          if (location) params.set("location", location);
+          const serpResp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
+          if (!serpResp.ok) {
+            throw Object.assign(new Error("SerpAPI request failed"), { status: 502, detail: await serpResp.text() });
+          }
+          const serpData = await serpResp.json();
+          return (serpData.shopping_results || []).slice(0, 20).map(r => ({
+            title: r.title,
+            price: r.price,
+            extracted_price: r.extracted_price,
+            source: r.source,
+            link: r.link,
+            thumbnail: r.thumbnail,
+          }));
+        },
+      });
+    } catch (err) {
+      if (err.status === 502) return res.status(502).json({ error: err.message, detail: err.detail });
+      throw err;
     }
-    const serpData = await serpResp.json();
-    let rawResults = (serpData.shopping_results || []).slice(0, 20).map(r => ({
-      title: r.title,
-      price: r.price,
-      extracted_price: r.extracted_price,
-      source: r.source,
-      link: r.link,
-      thumbnail: r.thumbnail,
-    }));
+    const pricesCheckedAt = fetched.fetchedAt;
+    let rawResults = fetched.results;
 
     // Respect Min/Max price - previously collected in the UI but never applied.
     if (minPrice) rawResults = rawResults.filter(r => r.extracted_price == null || r.extracted_price >= Number(minPrice));
@@ -160,7 +177,7 @@ app.post("/api/search", requireAuth, async (req, res) => {
         INSERT INTO search_history (user_id, item_query, budget, location)
         VALUES (${req.userId}, ${item}, ${maxPrice || null}, ${location || null})
       `;
-      return res.json({ results: [], recommendation: "No live results matched your filters. Try widening the price range or radius.", radiusNote });
+      return res.json({ results: [], recommendation: "No live results matched your filters. Try widening the price range or radius.", radiusNote, pricesCheckedAt });
     }
 
     const priceLine = [
@@ -190,10 +207,31 @@ Strict formatting rules: no markdown tables, no pipe characters, no bullet point
       VALUES (${req.userId}, ${item}, ${maxPrice || null}, ${location || null})
     `;
 
-    res.json({ results: rawResults, recommendation, radiusNote });
+    res.json({ results: rawResults, recommendation, radiusNote, pricesCheckedAt });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Search failed", detail: err.message });
+  }
+});
+
+// ---------------------------------------------------------------
+// MOST FREQUENTLY SEARCHED: the student's own top searches (last 90 days),
+// ranked and cleaned up in frequent-searches.js.
+// ---------------------------------------------------------------
+app.get("/api/search/frequent", requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT (array_agg(item_query ORDER BY created_at DESC))[1] AS query,
+             COUNT(*)::int AS count, MAX(created_at) AS "lastAt"
+      FROM search_history
+      WHERE user_id = ${req.userId} AND created_at > NOW() - INTERVAL '90 days'
+      GROUP BY lower(trim(item_query))
+      ORDER BY count DESC, "lastAt" DESC
+      LIMIT 200
+    `;
+    res.json({ items: rankFrequentSearches(rows) });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load frequent searches", detail: err.message });
   }
 });
 

@@ -568,6 +568,7 @@ module.exports = {
   MIN_PERSONAL_SUGGESTIONS,
   STAPLE_ITEMS,
   normaliseKey,
+  singular,
   filterPurchaseSignals,
   buildPersonalCandidates,
   filterCandidates,
