@@ -10,6 +10,8 @@ const smartBasket = require("./smart-basket");
 const smartBasketStore = require("./smart-basket-store");
 const searchCache = require("./search-cache");
 const { rankFrequentSearches } = require("./frequent-searches");
+const favourites = require("./favourites");
+const favouritesStore = require("./favourites-store");
 
 const app = express();
 app.use(express.json());
@@ -328,58 +330,9 @@ Give one short, specific insight or suggestion (max 40 words) to help them manag
 });
 
 // ---------------------------------------------------------------
-// FAVOURITES: full CRUD, scoped to the authenticated user
+// FAVOURITES: add (no duplicates), purchased tick, edit, delete - see favourites.js
 // ---------------------------------------------------------------
-app.post("/api/favourites", requireAuth, async (req, res) => {
-  try {
-    const { itemName, storeName, price, link } = req.body;
-    if (!itemName) return res.status(400).json({ error: "itemName is required" });
-    const [row] = await sql`
-      INSERT INTO favourites (user_id, item_name, store_name, price, link)
-      VALUES (${req.userId}, ${itemName}, ${storeName || null}, ${price || null}, ${link || null})
-      RETURNING *
-    `;
-    res.status(201).json(row);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to create favourite", detail: err.message });
-  }
-});
-
-app.get("/api/favourites", requireAuth, async (req, res) => {
-  try {
-    const rows = await sql`SELECT * FROM favourites WHERE user_id = ${req.userId} ORDER BY created_at DESC`;
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch favourites", detail: err.message });
-  }
-});
-
-app.put("/api/favourites/:id", requireAuth, async (req, res) => {
-  try {
-    const { itemName, storeName, price } = req.body;
-    const [row] = await sql`
-      UPDATE favourites
-      SET item_name = COALESCE(${itemName}, item_name),
-          store_name = COALESCE(${storeName}, store_name),
-          price = COALESCE(${price}, price)
-      WHERE id = ${req.params.id} AND user_id = ${req.userId}
-      RETURNING *
-    `;
-    if (!row) return res.status(404).json({ error: "Favourite not found" });
-    res.json(row);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to update favourite", detail: err.message });
-  }
-});
-
-app.delete("/api/favourites/:id", requireAuth, async (req, res) => {
-  try {
-    await sql`DELETE FROM favourites WHERE id = ${req.params.id} AND user_id = ${req.userId}`;
-    res.status(204).send();
-  } catch (err) {
-    res.status(500).json({ error: "Failed to delete favourite", detail: err.message });
-  }
-});
+favourites.registerFavouritesRoutes(app, requireAuth, favourites.createFavouritesRoutes({ store: favouritesStore }));
 
 // ---------------------------------------------------------------
 // BUDGET LOG: full CRUD, scoped to the authenticated user

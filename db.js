@@ -46,6 +46,26 @@ async function initSchema() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+  // Favourites: normalised name for duplicate checks (same rule as
+  // normaliseKey in smart-basket.js), a "Purchased" tick and a picture.
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS item_key TEXT`;
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS purchased_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS thumbnail TEXT`;
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`;
+  await sql`
+    UPDATE favourites
+    SET item_key = left(btrim(regexp_replace(lower(item_name), '[^a-z0-9]+', ' ', 'g')), 100)
+    WHERE item_key IS NULL
+  `;
+  // Blocks duplicate favourites at the database level too. Favourites saved
+  // twice before this check existed would make the index fail; the app still
+  // prevents new duplicates in that case, so never let it stop startup.
+  try {
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS favourites_user_item_idx ON favourites (user_id, item_key)`;
+  } catch (e) {
+    console.warn("Existing duplicate favourites found - skipping the unique index (new duplicates are still blocked).");
+    await sql`CREATE INDEX IF NOT EXISTS favourites_user_item_lookup_idx ON favourites (user_id, item_key)`;
+  }
 
   await sql`
     CREATE TABLE IF NOT EXISTS budget_log (
@@ -126,6 +146,20 @@ async function initSchema() {
       fetched_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+
+  // FORGOT PASSWORD: one row per reset link. Only a SHA-256 hash of the
+  // token is stored, so a database leak can't be used to reset passwords.
+  await sql`
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS password_resets_user_idx ON password_resets (user_id)`;
 
   console.log("Database schema ready.");
 }
