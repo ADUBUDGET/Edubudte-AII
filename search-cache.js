@@ -26,7 +26,7 @@ async function getOrFetchResults({ store, key, fetcher, now = new Date(), maxAge
   }
   const results = await fetcher();
   try {
-    await store.saveCachedPrices(key, results);
+    await store.saveCachedPrices(key, results, now);
   } catch (e) {
     console.error("Search cache save failed:", e.message);
   }

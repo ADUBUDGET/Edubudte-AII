@@ -72,11 +72,12 @@ module.exports = {
     return row ? { results: row.results, fetchedAt: row.fetched_at } : null;
   },
 
-  async saveCachedPrices(queryKey, results) {
+  // fetchedAt lets callers record the same time they report to the student.
+  async saveCachedPrices(queryKey, results, fetchedAt = null) {
     await sql`
       INSERT INTO price_cache (query_key, results, fetched_at)
-      VALUES (${queryKey}, ${JSON.stringify(results)}::jsonb, NOW())
-      ON CONFLICT (query_key) DO UPDATE SET results = EXCLUDED.results, fetched_at = NOW()
+      VALUES (${queryKey}, ${JSON.stringify(results)}::jsonb, COALESCE(${fetchedAt}::timestamptz, NOW()))
+      ON CONFLICT (query_key) DO UPDATE SET results = EXCLUDED.results, fetched_at = EXCLUDED.fetched_at
     `;
   },
 
