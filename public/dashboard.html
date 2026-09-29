@@ -221,6 +221,10 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter" id="dealsContainer">
 <p class="text-on-surface-variant col-span-3">Loading real deals...</p>
 </div>
+<div class="mt-8">
+<h4 class="font-label-lg text-on-surface-variant mb-4">Popular With You</h4>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-gutter" id="popularContainer"></div>
+</div>
 </div>
 </main>
 </div>
@@ -302,6 +306,47 @@
         </div>
       `).join('');
     }
+
+    // Built with DOM nodes (not innerHTML) since item names come from free-text
+    // searches and store listings, so they're never trusted as safe HTML.
+    function renderPopularItems(items) {
+      const el = document.getElementById('popularContainer');
+      el.textContent = '';
+      if (!items || items.length === 0) {
+        const p = document.createElement('p');
+        p.className = 'text-on-surface-variant col-span-3 font-body-md';
+        p.textContent = 'Search or buy a few items and your favourites will show up here.';
+        el.appendChild(p);
+        return;
+      }
+      items.forEach((it) => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel rounded-2xl p-5 flex items-center justify-between gap-3 backdrop-blur-3xl';
+
+        const left = document.createElement('div');
+        left.className = 'min-w-0';
+        const name = document.createElement('p');
+        name.className = 'font-body-md font-bold text-on-surface truncate';
+        name.textContent = it.name;
+        const sub = document.createElement('p');
+        sub.className = 'font-label-sm text-on-surface-variant';
+        const parts = [];
+        if (it.buyCount > 0) parts.push(it.buyCount + (it.buyCount === 1 ? ' purchase' : ' purchases'));
+        if (it.searchCount > 0) parts.push(it.searchCount + (it.searchCount === 1 ? ' search' : ' searches'));
+        sub.textContent = parts.join(' \u00b7 ');
+        left.appendChild(name);
+        left.appendChild(sub);
+
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-outlined text-primary shrink-0';
+        icon.textContent = it.buyCount > 0 ? 'shopping_bag' : 'search';
+
+        card.appendChild(left);
+        card.appendChild(icon);
+        el.appendChild(card);
+      });
+    }
+    renderPopularItems(dash.popularItems);
 
     function goSearch() {
       const q = document.getElementById('topSearchInput').value.trim();

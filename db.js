@@ -7,10 +7,9 @@ if (!process.env.DATABASE_URL) {
 // Neon's serverless driver runs queries over HTTP - no connection pool to manage.
 const sql = neon(process.env.DATABASE_URL);
 
-// Rebuilds the app's tables against real user accounts. Old anonymous-ID test
-// tables from the earlier version are dropped and recreated cleanly, since
-// that data was only ever test data and the schema shape has fundamentally
-// changed (text anonymous id -> real integer user id with a foreign key).
+// Creates every table the app needs if it doesn't already exist, and adds
+// any new columns to ones that do. Nothing here is ever dropped, so restarting
+// the app never loses a student's favourites, spending log or search history.
 async function initSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS users (
@@ -26,9 +25,10 @@ async function initSchema() {
   // Safe no-op if the column already exists (older DBs created before this feature).
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS spending_target NUMERIC`;
 
-  await sql`DROP TABLE IF EXISTS search_history`;
+  // No longer dropped on startup - see the note above CREATE TABLE budget_log.
+  // Resetting this every restart would also reset "most frequently searched".
   await sql`
-    CREATE TABLE search_history (
+    CREATE TABLE IF NOT EXISTS search_history (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       item_query TEXT NOT NULL,
@@ -38,9 +38,28 @@ async function initSchema() {
     )
   `;
 
-  await sql`DROP TABLE IF EXISTS favourites`;
+  // budget_log is created before favourites so favourites.budget_log_id can
+  // point at it. Both used to be dropped and recreated on every startup -
+  // fine while the schema was still changing, but it silently wiped every
+  // user's favourites and spending log on every restart. Now that the shape
+  // is stable, both are created once and only ever gain new columns.
   await sql`
-    CREATE TABLE favourites (
+    CREATE TABLE IF NOT EXISTS budget_log (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      amount NUMERIC NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Other',
+      description TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  // Set only on entries created automatically (e.g. from marking a favourite),
+  // so they can be matched up with search history by item name. Manual log
+  // entries from the "Log a Purchase" form leave this blank.
+  await sql`ALTER TABLE budget_log ADD COLUMN IF NOT EXISTS item_name TEXT`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS favourites (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       item_name TEXT NOT NULL,
@@ -50,18 +69,11 @@ async function initSchema() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
-
-  await sql`DROP TABLE IF EXISTS budget_log`;
-  await sql`
-    CREATE TABLE budget_log (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      amount NUMERIC NOT NULL,
-      category TEXT NOT NULL DEFAULT 'Other',
-      description TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `;
+  // Points at the budget_log row auto-created when this favourite was saved
+  // (if it had a price), so we know a favourite has already been logged.
+  // Not a foreign key on purpose: deleting the log entry should never be
+  // blocked by, or silently delete, the favourite that pointed at it.
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS budget_log_id INTEGER`;
 
   // Cached real search results for the "Nearby / Trending Deals" feeds.
   // Populated by scripts/refresh-deals.js (run manually or on a schedule),
