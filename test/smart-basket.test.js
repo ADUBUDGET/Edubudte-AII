@@ -4,6 +4,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const sb = require("../smart-basket");
+const { mapShoppingResult } = require("../shopping-results");
+
+// A cached result exactly as the app stores real SerpAPI data.
+const real = (title, price, source, extra = {}) =>
+  mapShoppingResult({ product_id: "p-" + title.length + "-" + price, title, extracted_price: price, price: "R " + price, source, product_link: "https://www.google.com/search?prds=catalogid:" + price, thumbnail: "https://img.example/" + price, ...extra });
 
 const NOW = new Date("2026-09-24T12:00:00Z");
 const daysAgo = n => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000);
@@ -150,20 +155,21 @@ test("filters hidden items, items skipped within the cooldown, and items already
   assert.deepEqual(out.map(c => c.itemKey), ["eggs", "pasta"]);
 });
 
-test("new users get popular terms, then staples, never duplicates", () => {
+test("new users only get terms other students really searched for - never made-up items", () => {
   const { suggestions, personalised } = sb.composeSuggestions({
     personal: [],
-    popular: [{ name: "Rice" }, { name: "Two minute noodles" }],
+    popular: [{ name: "Rice" }, { name: "Two minute noodles" }, { name: "rice" }],
     now: NOW,
     limit: 5,
   });
   assert.equal(personalised, false);
-  assert.equal(suggestions.length, 5);
-  assert.deepEqual(suggestions.slice(0, 2).map(s => s.source), ["popular", "popular"]);
-  assert.ok(suggestions.slice(2).every(s => s.source === "staple"));
-  const keys = suggestions.map(s => s.itemKey);
-  assert.equal(new Set(keys).size, keys.length);
-  assert.ok(!keys.slice(2).includes("rice"));
+  assert.deepEqual(suggestions.map(s => [s.name, s.source]), [["Rice", "popular"], ["Two minute noodles", "popular"]]);
+});
+
+test("with no real activity anywhere, there are no suggestions (the page shows an empty state)", () => {
+  const { suggestions } = sb.composeSuggestions({ personal: [], popular: [], now: NOW });
+  assert.deepEqual(suggestions, []);
+  assert.equal(sb.STAPLE_ITEMS, undefined, "no hard-coded staple list");
 });
 
 test("users with enough history get only personal suggestions", () => {
@@ -176,6 +182,7 @@ test("users with enough history get only personal suggestions", () => {
 test("fallback suggestions also respect hidden items", () => {
   const { suggestions } = sb.composeSuggestions({
     personal: [],
+    popular: [{ name: "Eggs" }, { name: "Milk" }],
     states: [{ item_key: "eggs", status: "hidden" }],
     now: NOW,
     limit: 20,
@@ -244,10 +251,10 @@ test("pickCheapest returns null rather than inventing a price", () => {
 
 test("priceItem uses the cache, limits live lookups, and never guesses", async () => {
   const store = createFakeStore({
-    cache: { "durban:rice": { results: [{ title: "Rice 2kg", extracted_price: 40, source: "Spar" }], fetchedAt: daysAgo(0.5) } },
+    cache: { [sb.priceCacheKey("Rice")]: { results: [real("Rice 2kg", 40, "Spar")], fetchedAt: daysAgo(0.5) } },
   });
   let liveCalls = 0;
-  const fetchShopping = async () => { liveCalls++; return [{ title: "Pasta 500g", extracted_price: 18, source: "Boxer" }]; };
+  const fetchShopping = async () => { liveCalls++; return [real("Pasta 500g", 18, "Boxer")]; };
   const budget = { live: 1 };
   const ctx = { store, fetchShopping, specials: [], budget, now: NOW };
 
@@ -258,7 +265,8 @@ test("priceItem uses the cache, limits live lookups, and never guesses", async (
   assert.equal(liveCalls, 1);
   assert.equal(rice.price.price, 40);
   assert.equal(pasta.price.store, "Boxer");
-  assert.ok(store.data.cache.has("durban:pasta"));
+  assert.ok(store.data.cache.has(sb.priceCacheKey("Pasta")));
+  assert.equal(rice.price.store, "SPAR"); // standard supplier name
   assert.equal(eggs.price, null);
   assert.equal(eggs.priceStatus, "not_checked");
 });
@@ -595,4 +603,55 @@ test("titleMatches copes with run-together words but not short prefixes", () => 
   assert.ok(sb.titleMatches("baked beans", "Baked Beansin Tomato Sauce 400G"));
   assert.ok(!sb.titleMatches("eggs", "Fresh Eggplant 1kg"));
   assert.ok(!sb.titleMatches("rice", "Best price on pasta"));
+});
+
+// ---------------------------------------------------------------
+// Real-data cache rules
+// ---------------------------------------------------------------
+test("a shown price is exactly the cached real listing: same product link, image and shop", async () => {
+  const listing = real("Tastic Rice 2kg", 39.99, "Checkers Sixty60");
+  const store = createFakeStore({ cache: { [sb.priceCacheKey("Rice")]: { results: [listing], fetchedAt: daysAgo(0.1) } } });
+  const out = await sb.priceItem("Rice", { store, fetchShopping: async () => [], specials: [], budget: { live: 0 }, now: NOW });
+  assert.equal(out.priceStatus, "ok");
+  assert.equal(out.price.price, listing.extracted_price);
+  assert.equal(out.price.link, listing.link);
+  assert.equal(out.price.thumbnail, listing.thumbnail);
+  assert.equal(out.price.supplierId, "checkers");
+  assert.equal(new Date(out.priceCheckedAt).getTime(), daysAgo(0.1).getTime(), "checked time comes from the cache entry");
+});
+
+test("an expired price is never shown - it is fetched again, or reported as not checked", async () => {
+  const cache = { [sb.priceCacheKey("Rice")]: { results: [real("Rice 2kg", 40, "Spar")], fetchedAt: daysAgo(2) } };
+  const noQuota = await sb.priceItem("Rice", { store: createFakeStore({ cache }), fetchShopping: async () => { throw new Error("should not be called"); }, specials: [], budget: { live: 0 }, now: NOW });
+  assert.equal(noQuota.price, null);
+  assert.equal(noQuota.priceStatus, "not_checked");
+
+  const failing = await sb.priceItem("Rice", { store: createFakeStore({ cache }), fetchShopping: async () => { throw new Error("SerpAPI down"); }, specials: [], budget: { live: 1 }, now: NOW });
+  assert.equal(failing.price, null, "old price not used when the live check fails");
+  assert.equal(failing.priceStatus, "error");
+
+  const store = createFakeStore({ cache });
+  const refreshed = await sb.priceItem("Rice", { store, fetchShopping: async () => [real("Rice 2kg", 42.5, "Spar")], specials: [], budget: { live: 1 }, now: NOW });
+  assert.equal(refreshed.price.price, 42.5);
+  assert.equal(store.data.cache.get(sb.priceCacheKey("Rice")).results[0].extracted_price, 42.5, "cache replaced with the fresh data");
+});
+
+test("old-format cache entries (no product id / availability) are ignored and replaced", async () => {
+  const legacy = { results: [{ title: "Rice 2kg", extracted_price: 1, source: "Spar" }], fetchedAt: daysAgo(0.1) };
+  const store = createFakeStore({ cache: { [sb.priceCacheKey("Rice")]: legacy } });
+  const out = await sb.priceItem("Rice", { store, fetchShopping: async () => [real("Rice 2kg", 41, "Spar")], specials: [], budget: { live: 1 }, now: NOW });
+  assert.equal(out.price.price, 41);
+});
+
+test("out-of-stock listings are never the cheapest", () => {
+  const offers = sb.toOffers({ shoppingResults: [
+    real("Rice 2kg", 30, "Shoprite", { tag: "Out of stock" }),
+    real("Rice 2kg", 35, "Checkers"),
+  ] });
+  // pickCheapest works on offers; the Shop/Basket clean results first:
+  const { cleanShoppingResults } = require("../suppliers");
+  const cleaned = cleanShoppingResults([real("Rice 2kg", 30, "Shoprite", { tag: "Out of stock" }), real("Rice 2kg", 35, "Checkers")]);
+  assert.deepEqual(cleaned.results.map(r => r.supplierId), ["checkers"]);
+  assert.equal(cleaned.rejected.out_of_stock, 1);
+  assert.ok(offers.length === 2);
 });

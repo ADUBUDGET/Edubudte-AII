@@ -9,6 +9,7 @@ const authRoutes = require("./auth");
 const smartBasket = require("./smart-basket");
 const smartBasketStore = require("./smart-basket-store");
 const searchCache = require("./search-cache");
+const shoppingResults = require("./shopping-results");
 const suppliers = require("./suppliers");
 const locationApi = require("./location");
 const locationStore = require("./location-store");
@@ -93,8 +94,9 @@ const locationService = locationApi.createLocationService({
 
 // Google Shopping results are pinned to one region (the student's exact
 // area is handled by nearby-shop distances instead - SerpAPI rejects
-// place names it doesn't know).
-const SHOPPING_LOCATION = process.env.SHOPPING_LOCATION || "Durban, KwaZulu-Natal, South Africa";
+// place names it doesn't know). Fetching and mapping live in
+// shopping-results.js so every cache holds the same real fields.
+const { SHOPPING_LOCATION, fetchShoppingResults } = shoppingResults;
 
 app.post("/api/search", requireAuth, async (req, res) => {
   try {
@@ -111,29 +113,7 @@ app.post("/api/search", requireAuth, async (req, res) => {
       fetched = await searchCache.getOrFetchResults({
         store: smartBasketStore,
         key: searchCache.searchCacheKey(item, SHOPPING_LOCATION),
-        fetcher: async () => {
-          const params = new URLSearchParams({
-            engine: "google_shopping",
-            q: String(item).trim().toLowerCase(),
-            api_key: process.env.SERPAPI_KEY,
-            gl: "za",
-            hl: "en",
-            location: SHOPPING_LOCATION,
-          });
-          const serpResp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
-          if (!serpResp.ok) {
-            throw Object.assign(new Error("SerpAPI request failed"), { status: 502, detail: await serpResp.text() });
-          }
-          const serpData = await serpResp.json();
-          return (serpData.shopping_results || []).slice(0, 40).map(r => ({ // all 40: many are filtered out by suppliers.js
-            title: r.title,
-            price: r.price,
-            extracted_price: r.extracted_price,
-            source: r.source,
-            link: r.product_link || r.link || null, // SerpAPI now returns product_link
-            thumbnail: r.thumbnail,
-          }));
-        },
+        fetcher: () => fetchShoppingResults(item),
       });
     } catch (err) {
       if (err.status === 502) return res.status(502).json({ error: err.message, detail: err.detail });

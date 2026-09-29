@@ -62,7 +62,9 @@ function cleanShoppingResults(results = []) {
   const rejected = {};
   const kept = new Map();
   for (const r of results) {
-    const problem = offerProblem({ title: r.title, price: r.extracted_price, store: r.source });
+    const problem = r.availability === "out_of_stock"
+      ? "out_of_stock"
+      : offerProblem({ title: r.title, price: r.extracted_price, store: r.source });
     if (problem) {
       rejected[problem] = (rejected[problem] || 0) + 1;
       continue;

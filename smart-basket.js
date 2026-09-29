@@ -29,13 +29,6 @@ const GENERIC_TERMS = new Set([
   "snacks", "takeaway", "takeaways", "misc", "other", "stuff", "items",
 ]);
 
-// Last-resort suggestions for brand-new users. Names only - prices are
-// always looked up from real data, never made up.
-const STAPLE_ITEMS = [
-  "Brown bread", "Long life milk", "Eggs", "Rice", "Pasta",
-  "Maize meal", "Baked beans", "Pilchards", "Peanut butter", "Toilet paper",
-];
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const { normaliseKey, singular } = require("./text-keys");
@@ -106,7 +99,9 @@ function filterCandidates(candidates, { states = [], activeListKeys = [], now = 
 }
 
 // Personal suggestions first; if there are too few (new users), top up with
-// terms many students search for, then with common staples.
+// terms that at least POPULAR_MIN_USERS different students really searched
+// for. Nothing is made up: with no real activity at all the list is empty
+// and the page says how to get suggestions.
 function composeSuggestions({ personal = [], popular = [], states = [], activeListKeys = [], now = new Date(), limit = MAX_SUGGESTIONS }) {
   const ctx = { states, activeListKeys, now };
   const picked = filterCandidates(personal, ctx).slice(0, limit);
@@ -115,7 +110,6 @@ function composeSuggestions({ personal = [], popular = [], states = [], activeLi
   const seen = new Set(picked.map(c => c.itemKey));
   const fallback = [
     ...popular.map(p => ({ itemKey: normaliseKey(p.name), name: p.name, source: "popular", reasons: ["Popular with students on EduBudget"], score: 0 })),
-    ...STAPLE_ITEMS.map(name => ({ itemKey: normaliseKey(name), name, source: "staple", reasons: ["Common student staple"], score: 0 })),
   ];
   for (const c of filterCandidates(fallback, ctx)) {
     if (picked.length >= limit) break;
@@ -257,39 +251,11 @@ function pickCheapest(query, offers, { nearbySupplierIds = null } = {}) {
   };
 }
 
-// Smart Basket searches are pinned to Durban (where DUT is): this brings far
-// more local chains (Shoprite, Makro, Woolworths...) into the results than a
-// country-wide search, which is dominated by marketplaces and foreign shops.
-const SHOPPING_LOCATION = "Durban, KwaZulu-Natal, South Africa";
-
-// Cache keys carry the location so results from other searches aren't mixed in.
-const priceCacheKey = name => `durban:${normaliseKey(name)}`;
-
-// Real SerpAPI Google Shopping lookup for South African results near Durban.
-async function fetchGoogleShopping(query) {
-  if (!process.env.SERPAPI_KEY) throw new Error("SERPAPI_KEY not configured on server");
-  const params = new URLSearchParams({
-    engine: "google_shopping",
-    // Lowercase on purpose: "Pasta" returned only foreign shops while
-    // "pasta" returned Shoprite and Makro.
-    q: String(query).trim().toLowerCase(),
-    api_key: process.env.SERPAPI_KEY,
-    gl: "za",
-    hl: "en",
-    location: SHOPPING_LOCATION,
-  });
-  const resp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
-  if (!resp.ok) throw new Error(`SerpAPI request failed (${resp.status})`);
-  const data = await resp.json();
-  return (data.shopping_results || []).slice(0, 40).map(r => ({
-    title: r.title,
-    price: r.price,
-    extracted_price: r.extracted_price,
-    source: r.source,
-    link: r.product_link || r.link || null,
-    thumbnail: r.thumbnail,
-  }));
-}
+// Smart Basket prices come from the same real Google Shopping lookup as the
+// Shop (shopping-results.js), pinned to SHOPPING_LOCATION (default Durban),
+// cached under a versioned key.
+const { SHOPPING_LOCATION, fetchShoppingResults, versionedKey, isValidCachedResults } = require("./shopping-results");
+const priceCacheKey = name => versionedKey("basket", SHOPPING_LOCATION, name);
 
 // ---------------------------------------------------------------
 // SERVICE: store-backed actions (store = smart-basket-store.js or a fake)
@@ -423,7 +389,10 @@ async function priceItem(name, { store, fetchShopping, specials, budget, now = n
   let status = "ok";
 
   const cached = await store.getCachedPrices(key);
-  const fresh = cached && now - new Date(cached.fetchedAt) < PRICE_CACHE_HOURS * 60 * 60 * 1000;
+  // Only fresh entries in the current full format count; older or
+  // incomplete ones are fetched again, never shown.
+  const fresh = cached && isValidCachedResults(cached.results) &&
+    now - new Date(cached.fetchedAt) < PRICE_CACHE_HOURS * 60 * 60 * 1000;
   if (fresh) {
     shoppingResults = cached.results;
     checkedAt = cached.fetchedAt;
@@ -440,13 +409,8 @@ async function priceItem(name, { store, fetchShopping, specials, budget, now = n
   } else {
     status = "not_checked";
   }
-  // An expired cache entry is still better than nothing, as long as the card
-  // says when it was checked.
-  if (shoppingResults.length === 0 && cached && status !== "ok") {
-    shoppingResults = cached.results;
-    checkedAt = cached.fetchedAt;
-    status = "ok";
-  }
+  // An expired price is never used: the card says "not checked yet" (and is
+  // priced live when it reaches the top) or "couldn't check prices".
 
   const best = pickCheapest(name, toOffers({ shoppingResults, specials: matchingSpecials }), { nearbySupplierIds });
   if (best) {
@@ -460,7 +424,7 @@ async function priceItem(name, { store, fetchShopping, specials, budget, now = n
 // ROUTES
 // ---------------------------------------------------------------
 // nearbyFor(userId) -> { nearbySupplierIds: Set | null, area: { label, radiusKm } | null }
-function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, now = () => new Date(), nearbyFor = null }) {
+function createSmartBasketRoutes({ store, fetchShopping = name => fetchShoppingResults(name), now = () => new Date(), nearbyFor = null }) {
   const nearbyContext = async userId => (nearbyFor ? nearbyFor(userId) : { nearbySupplierIds: null, area: null });
 
   const fail = (res, err, message) => {
@@ -609,7 +573,6 @@ module.exports = {
   PRICE_CACHE_HOURS,
   MAX_LIVE_PRICE_LOOKUPS,
   MIN_PERSONAL_SUGGESTIONS,
-  STAPLE_ITEMS,
   normaliseKey,
   singular,
   filterPurchaseSignals,
@@ -622,6 +585,7 @@ module.exports = {
   matchSupplier,
   dropPriceOutliers,
   pickCheapest,
+  priceCacheKey,
   addItemToList,
   setItemQuantity,
   cleanItemInput,

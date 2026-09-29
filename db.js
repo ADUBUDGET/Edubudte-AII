@@ -6,6 +6,7 @@ if (!process.env.DATABASE_URL) {
 
 // Neon's serverless driver runs queries over HTTP - no connection pool to manage.
 const sql = neon(process.env.DATABASE_URL);
+const { CACHE_VERSION } = require("./shopping-results");
 
 // Creates the app's tables if they don't exist yet. Existing tables and their
 // data are left untouched, so user data survives server restarts.
@@ -178,6 +179,15 @@ async function initSchema() {
       results JSONB NOT NULL,
       fetched_at TIMESTAMPTZ DEFAULT NOW()
     )
+  `;
+
+  // Cache clean-up: results written under older cache keys/formats are never
+  // read again (see shopping-results.js), and anything older than a week is
+  // too old to show, so both are removed. Only cached copies of SerpAPI
+  // data are deleted here - never user data.
+  await sql`
+    DELETE FROM price_cache
+    WHERE query_key NOT LIKE ${CACHE_VERSION + ":%"} OR fetched_at < NOW() - INTERVAL '7 days'
   `;
 
   // NEARBY SHOPS: cached branch locations per approved supplier per ~5 km

@@ -4,16 +4,18 @@
 // shared price_cache table (no personal data). Filters, radius and the AI
 // recommendation still run on every search.
 // ---------------------------------------------------------------
-const { normaliseKey } = require("./smart-basket");
+const { versionedKey, isValidCachedResults } = require("./shopping-results");
 
 const SEARCH_CACHE_HOURS = 6;
 
 function searchCacheKey(item, location) {
-  return `search:${normaliseKey(location) || "za"}:${normaliseKey(item)}`;
+  return versionedKey("search", location || "za", item);
 }
 
-// Returns { results, fetchedAt, fromCache }. A cache read/write problem never
-// breaks the search: it just falls back to a live lookup.
+// Returns { results, fetchedAt, fromCache }. Cached results are only used
+// while fresh AND in the current full format (product id, availability...);
+// anything else is fetched again. A cache read/write problem never breaks
+// the search: it just falls back to a live lookup.
 async function getOrFetchResults({ store, key, fetcher, now = new Date(), maxAgeMs = SEARCH_CACHE_HOURS * 60 * 60 * 1000 }) {
   let cached = null;
   try {
@@ -21,7 +23,7 @@ async function getOrFetchResults({ store, key, fetcher, now = new Date(), maxAge
   } catch (e) {
     console.error("Search cache read failed:", e.message);
   }
-  if (cached && now - new Date(cached.fetchedAt) < maxAgeMs) {
+  if (cached && now - new Date(cached.fetchedAt) < maxAgeMs && isValidCachedResults(cached.results)) {
     return { results: cached.results, fetchedAt: new Date(cached.fetchedAt), fromCache: true };
   }
   const results = await fetcher();
