@@ -12,6 +12,8 @@ const searchCache = require("./search-cache");
 const suppliers = require("./suppliers");
 const locationApi = require("./location");
 const locationStore = require("./location-store");
+const basket = require("./basket");
+const basketStore = require("./basket-store");
 const { rankFrequentSearches } = require("./frequent-searches");
 const favourites = require("./favourites");
 const favouritesStore = require("./favourites-store");
@@ -891,6 +893,14 @@ app.get("/api/specials", requireAuth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Failed to load specials", detail: err.message });
   }
+});
+
+// ---------------------------------------------------------------
+// BASKET + BUDGET BANK: GET /api/basket (items, totals, budget) and
+// POST /api/basket/checkout ("Confirm purchase") - see basket.js.
+// ---------------------------------------------------------------
+basket.registerBasketRoutes(app, requireAuth, basket.createBasketRoutes({ store: basketStore }), {
+  checkoutLimiter: rateLimit({ windowMs: 60 * 1000, max: 10, message: { error: "Too many purchase attempts, please wait a moment." } }),
 });
 
 // ---------------------------------------------------------------

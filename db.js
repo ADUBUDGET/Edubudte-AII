@@ -129,6 +129,31 @@ async function initSchema() {
     CREATE UNIQUE INDEX IF NOT EXISTS grocery_list_active_item_idx
     ON grocery_list (user_id, item_key) WHERE purchased_at IS NULL
   `;
+  // BASKET: the grocery list doubles as the basket - quantity, pack size
+  // (unit), aisle category and the approved supplier the price is from.
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS unit TEXT`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS category TEXT`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS supplier_id TEXT`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS purchase_id INTEGER`;
+
+  // BASKET CHECKOUT: one row per confirmed purchase. client_ref is sent by
+  // the page with each "Confirm purchase", so a double tap or a retry after
+  // a dropped connection can never charge the Budget Bank twice.
+  await sql`
+    CREATE TABLE IF NOT EXISTS purchases (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      client_ref TEXT NOT NULL,
+      amount NUMERIC(10,2) NOT NULL CHECK (amount > 0),
+      estimated_total NUMERIC(10,2),
+      item_count INTEGER NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (user_id, client_ref)
+    )
+  `;
+  // Links an automatic budget_log entry to the purchase that created it.
+  await sql`ALTER TABLE budget_log ADD COLUMN IF NOT EXISTS purchase_id INTEGER`;
 
   // SMART BASKET: per-user swipe decisions. 'skipped' hides a suggestion
   // until skipped_until; 'hidden' hides it until the user restores it.

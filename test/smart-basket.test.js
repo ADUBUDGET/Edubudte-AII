@@ -55,14 +55,21 @@ function createFakeStore(seed = {}) {
       if (data.list.some(r => r.user_id === userId && r.item_key === item.itemKey && !r.purchased_at)) {
         throw Object.assign(new Error("duplicate key"), { code: "23505" });
       }
-      const row = { id: data.nextId++, user_id: userId, item_name: item.itemName, item_key: item.itemKey, store_name: item.storeName, price: item.price, purchased_at: null };
+      const row = { id: data.nextId++, user_id: userId, item_name: item.itemName, item_key: item.itemKey, supplier_id: item.supplierId ?? null,
+        store_name: item.storeName, price: item.price, quantity: item.quantity ?? 1, unit: item.unit ?? null, category: item.category ?? null, purchased_at: null };
       data.list.push(row);
       return row;
     },
-    async updateListItemPrice(userId, id, item) {
+    async mergeListItem(userId, id, m) {
       const row = data.list.find(r => r.id === id && r.user_id === userId);
-      Object.assign(row, { store_name: item.storeName, price: item.price });
+      const map = { supplierId: "supplier_id", storeName: "store_name", price: "price", productTitle: "product_title", link: "link", thumbnail: "thumbnail", unit: "unit", quantity: "quantity" };
+      for (const [k, col] of Object.entries(map)) if (k in m) row[col] = m[k] ?? null;
       return row;
+    },
+    async setQuantity(userId, id, quantity) {
+      const row = data.list.find(r => r.id === Number(id) && r.user_id === userId && !r.purchased_at);
+      if (row) row.quantity = quantity;
+      return row || null;
     },
     async setPurchased(userId, id, purchased) {
       const row = data.list.find(r => r.id === Number(id) && r.user_id === userId);
@@ -277,14 +284,57 @@ test("swipe right adds to the grocery list and removes the card from suggestions
   assert.ok(!suggestions.some(s => s.itemKey === "rice"));
 });
 
-test("adding an item already on the list doesn't duplicate it, but refreshes its price", async () => {
+test("adding the same product from the same shop increases the quantity", async () => {
+  const store = createFakeStore();
+  await sb.addItemToList(store, 1, { itemName: "Brown Bread", price: 18, storeName: "Spar", quantity: 2 });
+  const again = await sb.addItemToList(store, 1, { itemName: "brown  bread!", price: 17.5, supplierId: "spar" });
+  assert.equal(again.alreadyExisted, true);
+  assert.equal(again.merge, "quantity");
+  assert.equal(store.data.list.length, 1);
+  assert.equal(store.data.list[0].quantity, 3);
+  assert.equal(store.data.list[0].price, 17.5, "latest price kept");
+});
+
+test("adding the same product from another shop switches shop and price, keeping one line", async () => {
   const store = createFakeStore();
   await sb.addItemToList(store, 1, { itemName: "Brown Bread", price: 18, storeName: "Spar" });
-  const again = await sb.addItemToList(store, 1, { itemName: "brown  bread!", price: 16.5, storeName: "Shoprite" });
-  assert.equal(again.alreadyExisted, true);
+  const again = await sb.addItemToList(store, 1, { itemName: "Brown bread", price: 16.5, storeName: "Shoprite" });
+  assert.equal(again.merge, "switched");
   assert.equal(store.data.list.length, 1);
-  assert.equal(store.data.list[0].price, 16.5);
   assert.equal(store.data.list[0].store_name, "Shoprite");
+  assert.equal(store.data.list[0].supplier_id, "shoprite");
+  assert.equal(store.data.list[0].price, 16.5);
+  assert.equal(store.data.list[0].quantity, 2);
+});
+
+test("quantity is capped at 99 when merging", async () => {
+  const store = createFakeStore();
+  await sb.addItemToList(store, 1, { itemName: "Eggs", quantity: 98 });
+  await sb.addItemToList(store, 1, { itemName: "Eggs", quantity: 5 });
+  assert.equal(store.data.list[0].quantity, 99);
+});
+
+test("basket input is validated: quantity, approved shops, sensible defaults", async () => {
+  const store = createFakeStore();
+  for (const bad of [{ itemName: "Rice", quantity: 0 }, { itemName: "Rice", quantity: 1.5 }, { itemName: "Rice", quantity: 100 },
+    { itemName: "Rice", storeName: "Desertcart.ae" }, { itemName: "Rice", supplierId: "nope" }]) {
+    await assert.rejects(sb.addItemToList(store, 1, bad), { status: 400 }, JSON.stringify(bad));
+  }
+  const { item } = await sb.addItemToList(store, 1, { itemName: "Tastic Rice", productTitle: "Tastic Long Grain Rice 2kg", storeName: "PnP" });
+  assert.equal(item.store_name, "Pick n Pay");
+  assert.equal(item.unit, "2kg");
+  assert.equal(item.category, "Pantry");
+  assert.equal(item.quantity, 1);
+});
+
+test("quantity can be changed on basket items but not on bought ones", async () => {
+  const store = createFakeStore();
+  const { item } = await sb.addItemToList(store, 1, { itemName: "Milk" });
+  assert.equal((await sb.setItemQuantity(store, 1, item.id, 4)).quantity, 4);
+  await assert.rejects(sb.setItemQuantity(store, 1, item.id, 0), { status: 400 });
+  await store.setPurchased(1, item.id, true);
+  assert.equal(await sb.setItemQuantity(store, 1, item.id, 2), null);
+  assert.equal(await sb.setItemQuantity(store, 2, item.id, 2), null, "other users can't change it");
 });
 
 test("duplicate prevention still works when two adds race past the first check", async () => {

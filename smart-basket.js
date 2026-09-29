@@ -294,51 +294,93 @@ async function fetchGoogleShopping(query) {
 // ---------------------------------------------------------------
 // SERVICE: store-backed actions (store = smart-basket-store.js or a fake)
 // ---------------------------------------------------------------
+const MAX_QUANTITY = 99;
+const { getSupplier } = require("./suppliers");
+const { guessCategory } = require("./categories");
+
+const badInput = message => Object.assign(new Error(message), { status: 400 });
+
+// Validates what the page sends when adding to the basket (grocery list).
+// A shop must be an approved supplier: given by id (from Shop / Smart
+// Basket results) or by a name that maps to one. Items without a shop
+// (typed by hand, or from a favourite with no store) are fine.
 function cleanItemInput(body) {
-  const name = typeof body?.itemName === "string" ? body.itemName.trim().slice(0, 120) : "";
+  const name = typeof body?.itemName === "string" ? body.itemName.trim().replace(/\s+/g, " ").slice(0, 120) : "";
   const price = body?.price != null && body.price !== "" ? Number(body.price) : null;
   const httpLink = v => (typeof v === "string" && /^https?:\/\//i.test(v) ? v.slice(0, 2000) : null);
+  const qty = body?.quantity == null || body.quantity === "" ? 1 : Number(body.quantity);
+  if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QUANTITY) throw badInput(`Quantity must be a whole number from 1 to ${MAX_QUANTITY}.`);
+
+  let supplier = null;
+  if (body?.supplierId) {
+    supplier = getSupplier(body.supplierId);
+    if (!supplier) throw badInput("That shop isn't one of our approved stores.");
+  } else if (typeof body?.storeName === "string" && body.storeName.trim()) {
+    supplier = matchSupplier(body.storeName);
+    if (!supplier) throw badInput(`"${body.storeName.trim().slice(0, 60)}" isn't one of our approved stores.`);
+  }
+  const productTitle = typeof body?.productTitle === "string" ? body.productTitle.slice(0, 300) : null;
+  const category = typeof body?.category === "string" && body.category.trim() ? body.category.trim().slice(0, 40) : guessCategory(productTitle || name);
   return {
     itemName: name,
     itemKey: normaliseKey(name),
-    productTitle: typeof body?.productTitle === "string" ? body.productTitle.slice(0, 300) : null,
-    storeName: typeof body?.storeName === "string" ? body.storeName.slice(0, 120) : null,
-    price: Number.isFinite(price) && price >= 0 ? price : null,
+    productTitle,
+    supplierId: supplier ? supplier.id : null,
+    storeName: supplier ? supplier.name : null,
+    price: Number.isFinite(price) && price >= 0 && price <= 100000 ? Math.round(price * 100) / 100 : null,
+    quantity: qty,
+    unit: typeof body?.unit === "string" && body.unit.trim() ? body.unit.trim().slice(0, 30) : parseSize(productTitle || name),
+    category,
     link: httpLink(body?.link),
     thumbnail: httpLink(body?.thumbnail),
-    addedFrom: body?.addedFrom === "smart_basket" ? "smart_basket" : "manual",
+    addedFrom: ["smart_basket", "shop", "favourite"].includes(body?.addedFrom) ? body.addedFrom : "manual",
   };
 }
 
-// Adds an item to the active grocery list, or - if it's already there -
-// refreshes its price details and reports alreadyExisted instead of adding
-// a duplicate.
+// Adds an item to the basket (the active grocery list). The same product
+// (normalised name) is never added twice:
+// - same shop (or no shop): the quantities are added together
+// - a different shop: the item switches to the new shop and price, and the
+//   quantities are added together
+// Returns { item, alreadyExisted, merge: null | "quantity" | "switched" }.
 async function addItemToList(store, userId, body) {
   const item = cleanItemInput(body);
-  if (!item.itemKey) {
-    const err = new Error("itemName is required");
-    err.status = 400;
-    throw err;
-  }
-  const refresh = async existing => {
-    const updated = item.price != null
-      ? await store.updateListItemPrice(userId, existing.id, item)
-      : existing;
-    return { item: updated, alreadyExisted: true };
+  if (!item.itemKey) throw badInput("itemName is required");
+
+  const merge = async existing => {
+    const switched = item.supplierId && item.supplierId !== existing.supplier_id;
+    const quantity = Math.min(MAX_QUANTITY, (Number(existing.quantity) || 1) + item.quantity);
+    const updated = await store.mergeListItem(userId, existing.id, {
+      quantity,
+      // Keep the saved shop/price unless a (new) shop or price was given.
+      ...(switched || item.price != null
+        ? { supplierId: item.supplierId ?? existing.supplier_id, storeName: item.storeName ?? existing.store_name,
+            price: item.price, productTitle: item.productTitle ?? existing.product_title,
+            link: item.link ?? existing.link, thumbnail: item.thumbnail ?? existing.thumbnail, unit: item.unit ?? existing.unit }
+        : {}),
+    });
+    return { item: updated, alreadyExisted: true, merge: switched ? "switched" : "quantity" };
   };
 
   const existing = await store.findActiveListItem(userId, item.itemKey);
-  if (existing) return refresh(existing);
+  if (existing) return merge(existing);
   try {
-    return { item: await store.insertListItem(userId, item), alreadyExisted: false };
+    return { item: await store.insertListItem(userId, item), alreadyExisted: false, merge: null };
   } catch (err) {
     // Two taps at once: the unique index caught the duplicate.
     if (err.code === "23505") {
       const raced = await store.findActiveListItem(userId, item.itemKey);
-      if (raced) return refresh(raced);
+      if (raced) return merge(raced);
     }
     throw err;
   }
+}
+
+// Sets an item's quantity (active items only).
+async function setItemQuantity(store, userId, id, quantity) {
+  const q = Number(quantity);
+  if (!Number.isInteger(q) || q < 1 || q > MAX_QUANTITY) throw badInput(`Quantity must be a whole number from 1 to ${MAX_QUANTITY}.`);
+  return store.setQuantity(userId, id, q);
 }
 
 async function setSuggestionState(store, userId, body, status, now = new Date()) {
@@ -515,9 +557,20 @@ function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, n
     async updateListItem(req, res) {
       try {
         if (!/^\d+$/.test(req.params.id)) return res.status(404).json({ error: "Grocery list item not found" });
-        const purchased = req.body?.purchased === true;
-        const row = await store.setPurchased(req.userId, req.params.id, purchased);
-        if (!row) return res.status(404).json({ error: "Grocery list item not found" });
+        const body = req.body || {};
+        if (body.quantity === undefined && body.purchased === undefined) {
+          return res.status(400).json({ error: "Send a quantity or purchased: true/false." });
+        }
+        let row = null;
+        if (body.quantity !== undefined) {
+          row = await setItemQuantity(store, req.userId, req.params.id, body.quantity);
+          if (!row) return res.status(404).json({ error: "That item isn't in your basket any more." });
+        }
+        if (body.purchased !== undefined) {
+          if (typeof body.purchased !== "boolean") return res.status(400).json({ error: "purchased must be true or false" });
+          row = await store.setPurchased(req.userId, req.params.id, body.purchased);
+          if (!row) return res.status(404).json({ error: "Grocery list item not found" });
+        }
         res.json(row);
       } catch (err) {
         if (err.code === "23505") return res.status(409).json({ error: "That item is already on your list." });
@@ -570,6 +623,9 @@ module.exports = {
   dropPriceOutliers,
   pickCheapest,
   addItemToList,
+  setItemQuantity,
+  cleanItemInput,
+  MAX_QUANTITY,
   setSuggestionState,
   loadSuggestions,
   priceItem,
