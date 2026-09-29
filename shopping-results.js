@@ -80,8 +80,21 @@ async function fetchShoppingResults(query, { location = SHOPPING_LOCATION, fetch
   return (data.shopping_results || []).slice(0, MAX_RESULTS).map(mapShoppingResult);
 }
 
+// Product id and "price checked at" sent with a basket item or favourite.
+// The id is kept as-is (trimmed); the time must be a real date that isn't in
+// the future and isn't older than the price cache allows (7 days) - if it's
+// missing or invalid, the price is treated as checked now only when a price
+// was given, else null.
+function cleanPriceMeta(body = {}, { hasPrice = false, now = new Date() } = {}) {
+  const productId = typeof body.productId === "string" && body.productId.trim() ? body.productId.trim().slice(0, 64) : null;
+  const t = body.priceCheckedAt ? new Date(body.priceCheckedAt) : null;
+  const valid = t && !isNaN(t) && t <= new Date(now.getTime() + 5 * 60 * 1000) && now - t <= 7 * 24 * 60 * 60 * 1000;
+  return { productId, priceCheckedAt: valid ? t : hasPrice ? now : null };
+}
+
 module.exports = {
   CACHE_VERSION,
+  cleanPriceMeta,
   SHOPPING_LOCATION,
   availabilityOf,
   mapShoppingResult,

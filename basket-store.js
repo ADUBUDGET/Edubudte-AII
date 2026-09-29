@@ -19,6 +19,25 @@ module.exports = {
     return { monthlyBudget: Number(row?.monthly_budget || 0), totalSpent: Number(row?.total_spent || 0) };
   },
 
+  // After "Refresh prices": the real listing's current price and when it was
+  // checked, or availability "not_listed" (price left as it was, flagged).
+  async updateItemPrice(userId, id, u) {
+    const has = k => Object.prototype.hasOwnProperty.call(u, k);
+    const [row] = await sql`
+      UPDATE grocery_list
+      SET price = CASE WHEN ${has("price")} THEN ${u.price ?? null}::numeric ELSE price END,
+          price_checked_at = CASE WHEN ${has("priceCheckedAt")} THEN ${u.priceCheckedAt ?? null}::timestamptz ELSE price_checked_at END,
+          product_id = CASE WHEN ${has("productId")} AND ${u.productId != null} THEN ${u.productId ?? null} ELSE product_id END,
+          link = CASE WHEN ${has("link")} AND ${u.link != null} THEN ${u.link ?? null} ELSE link END,
+          thumbnail = CASE WHEN ${has("thumbnail")} AND ${u.thumbnail != null} THEN ${u.thumbnail ?? null} ELSE thumbnail END,
+          availability = ${u.availability ?? null},
+          updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${userId} AND purchased_at IS NULL
+      RETURNING *
+    `;
+    return row || null;
+  },
+
   async getActiveItemsByIds(userId, ids) {
     return sql`
       SELECT * FROM grocery_list

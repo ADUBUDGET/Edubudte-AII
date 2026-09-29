@@ -885,8 +885,19 @@ app.get("/api/specials", requireAuth, async (req, res) => {
 // BASKET + BUDGET BANK: GET /api/basket (items, totals, budget) and
 // POST /api/basket/checkout ("Confirm purchase") - see basket.js.
 // ---------------------------------------------------------------
-basket.registerBasketRoutes(app, requireAuth, basket.createBasketRoutes({ store: basketStore }), {
+// Refresh prices re-checks stale basket prices against the same cached real
+// Google Shopping data the Shop uses (6-hour cache shared by all students).
+const basketPriceLookup = async term => {
+  const { results, fetchedAt } = await searchCache.getOrFetchResults({
+    store: smartBasketStore,
+    key: searchCache.searchCacheKey(term, SHOPPING_LOCATION),
+    fetcher: () => fetchShoppingResults(term),
+  });
+  return { results, fetchedAt };
+};
+basket.registerBasketRoutes(app, requireAuth, basket.createBasketRoutes({ store: basketStore, lookup: basketPriceLookup }), {
   checkoutLimiter: rateLimit({ windowMs: 60 * 1000, max: 10, message: { error: "Too many purchase attempts, please wait a moment." } }),
+  refreshLimiter: rateLimit({ windowMs: 60 * 1000, max: 3, message: { error: "Prices were just refreshed - please wait a minute." } }),
 });
 
 // ---------------------------------------------------------------

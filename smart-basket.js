@@ -254,7 +254,7 @@ function pickCheapest(query, offers, { nearbySupplierIds = null } = {}) {
 // Smart Basket prices come from the same real Google Shopping lookup as the
 // Shop (shopping-results.js), pinned to SHOPPING_LOCATION (default Durban),
 // cached under a versioned key.
-const { SHOPPING_LOCATION, fetchShoppingResults, versionedKey, isValidCachedResults } = require("./shopping-results");
+const { SHOPPING_LOCATION, fetchShoppingResults, versionedKey, isValidCachedResults, cleanPriceMeta } = require("./shopping-results");
 const priceCacheKey = name => versionedKey("basket", SHOPPING_LOCATION, name);
 
 // ---------------------------------------------------------------
@@ -287,13 +287,17 @@ function cleanItemInput(body) {
   }
   const productTitle = typeof body?.productTitle === "string" ? body.productTitle.slice(0, 300) : null;
   const category = typeof body?.category === "string" && body.category.trim() ? body.category.trim().slice(0, 40) : guessCategory(productTitle || name);
+  const cleanPrice = Number.isFinite(price) && price >= 0 && price <= 100000 ? Math.round(price * 100) / 100 : null;
+  const { productId, priceCheckedAt } = cleanPriceMeta(body || {}, { hasPrice: cleanPrice != null });
   return {
+    productId,
+    priceCheckedAt,
     itemName: name,
     itemKey: normaliseKey(name),
     productTitle,
     supplierId: supplier ? supplier.id : null,
     storeName: supplier ? supplier.name : null,
-    price: Number.isFinite(price) && price >= 0 && price <= 100000 ? Math.round(price * 100) / 100 : null,
+    price: cleanPrice,
     quantity: qty,
     unit: typeof body?.unit === "string" && body.unit.trim() ? body.unit.trim().slice(0, 30) : parseSize(productTitle || name),
     category,
@@ -322,7 +326,9 @@ async function addItemToList(store, userId, body) {
       ...(switched || item.price != null
         ? { supplierId: item.supplierId ?? existing.supplier_id, storeName: item.storeName ?? existing.store_name,
             price: item.price, productTitle: item.productTitle ?? existing.product_title,
-            link: item.link ?? existing.link, thumbnail: item.thumbnail ?? existing.thumbnail, unit: item.unit ?? existing.unit }
+            link: item.link ?? existing.link, thumbnail: item.thumbnail ?? existing.thumbnail, unit: item.unit ?? existing.unit,
+            productId: item.productId ?? (switched ? null : existing.product_id),
+            priceCheckedAt: item.price != null ? item.priceCheckedAt : existing.price_checked_at }
         : {}),
     });
     return { item: updated, alreadyExisted: true, merge: switched ? "switched" : "quantity" };

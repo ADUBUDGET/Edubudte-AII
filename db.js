@@ -137,6 +137,15 @@ async function initSchema() {
   await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS category TEXT`;
   await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS supplier_id TEXT`;
   await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS purchase_id INTEGER`;
+  // Real listing details kept with each saved price: the SerpAPI product id,
+  // when the price was checked, and whether the listing was still there at
+  // the last refresh ("listed" / "not_listed").
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS product_id TEXT`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS price_checked_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS availability TEXT`;
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS product_id TEXT`;
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS supplier_id TEXT`;
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS price_checked_at TIMESTAMPTZ`;
 
   // BASKET CHECKOUT: one row per confirmed purchase. client_ref is sent by
   // the page with each "Confirm purchase", so a double tap or a retry after

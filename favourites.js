@@ -7,7 +7,9 @@
 // (any case/punctuation) doesn't add a duplicate - it refreshes the saved
 // store/price instead and says so.
 // ---------------------------------------------------------------
-const { normaliseKey } = require("./smart-basket");
+const { normaliseKey } = require("./text-keys");
+const { getSupplier, matchSupplier } = require("./suppliers");
+const { cleanPriceMeta } = require("./shopping-results");
 
 function badRequest(message) {
   return Object.assign(new Error(message), { status: 400 });
@@ -17,11 +19,20 @@ function cleanFavouriteInput(body = {}) {
   const itemName = typeof body.itemName === "string" ? body.itemName.trim().replace(/\s+/g, " ").slice(0, 200) : "";
   const price = body.price != null && body.price !== "" ? Number(body.price) : null;
   const httpLink = v => (typeof v === "string" && /^https?:\/\//i.test(v) ? v.slice(0, 2000) : null);
+  const cleanPrice = Number.isFinite(price) && price >= 0 ? price : null;
+  const storeName = typeof body.storeName === "string" && body.storeName.trim() ? body.storeName.trim().slice(0, 120) : null;
+  // The real listing's supplier, product id and price-checked time are kept
+  // so the favourite can show how old its saved price is.
+  const supplier = (body.supplierId && getSupplier(body.supplierId)) || (storeName && matchSupplier(storeName)) || null;
+  const { productId, priceCheckedAt } = cleanPriceMeta(body, { hasPrice: cleanPrice != null });
   return {
     itemName,
     itemKey: normaliseKey(itemName),
-    storeName: typeof body.storeName === "string" && body.storeName.trim() ? body.storeName.trim().slice(0, 120) : null,
-    price: Number.isFinite(price) && price >= 0 ? price : null,
+    storeName: supplier ? supplier.name : storeName,
+    supplierId: supplier ? supplier.id : null,
+    productId,
+    priceCheckedAt,
+    price: cleanPrice,
     link: httpLink(body.link),
     thumbnail: httpLink(body.thumbnail),
   };
