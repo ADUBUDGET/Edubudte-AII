@@ -17,6 +17,64 @@
 // Store: basket-store.js; tests use an in-memory fake.
 // ---------------------------------------------------------------
 
+const { normaliseKey } = require("./text-keys");
+const { cleanShoppingResults } = require("./suppliers");
+
+// A saved basket price counts as current for this long after it was
+// checked against the real listing; after that it's labelled with its date
+// and "Refresh prices" re-checks it.
+const PRICE_FRESH_HOURS = 24;
+const MAX_REFRESH_ITEMS = 8;
+
+// "current" | "stale" (older than PRICE_FRESH_HOURS, or never dated) |
+// "not_listed" (the listing wasn't found at the last refresh) | "unknown" (no price)
+function priceStatusOf(item, now = new Date()) {
+  if (item.price == null) return "unknown";
+  if (item.availability === "not_listed") return "not_listed";
+  if (!item.price_checked_at) return "stale";
+  return now - new Date(item.price_checked_at) <= PRICE_FRESH_HOURS * 60 * 60 * 1000 ? "current" : "stale";
+}
+
+// The same real listing in fresh results: same product id at the same
+// supplier, or (for items saved without an id) the same supplier and title.
+function matchListing(item, cleanedResults) {
+  const sameSupplier = r => r.supplierId === item.supplier_id;
+  if (item.product_id) {
+    const byId = cleanedResults.find(r => sameSupplier(r) && r.product_id === item.product_id);
+    if (byId) return byId;
+  }
+  const title = normaliseKey(item.product_title || item.item_name);
+  return cleanedResults.find(r => sameSupplier(r) && normaliseKey(r.title) === title) || null;
+}
+
+// Re-checks stale basket prices against real Google Shopping data (cached
+// for a few hours, so several students refreshing the same product share
+// one lookup). `lookup(term)` -> { results, fetchedAt }.
+async function refreshPrices(store, userId, { lookup, now = new Date(), maxItems = MAX_REFRESH_ITEMS }) {
+  const items = (await store.getList(userId)).filter(i => !i.purchased_at && i.supplier_id && ["stale", "not_listed"].includes(priceStatusOf(i, now)));
+  const out = { checked: 0, changed: 0, confirmed: 0, notListed: 0, failed: 0, skipped: Math.max(0, items.length - maxItems) };
+  for (const item of items.slice(0, maxItems)) {
+    out.checked++;
+    try {
+      const { results, fetchedAt } = await lookup(item.product_title || item.item_name);
+      const match = matchListing(item, cleanShoppingResults(results).results);
+      if (match) {
+        if (Number(match.extracted_price) !== Number(item.price)) out.changed++; else out.confirmed++;
+        await store.updateItemPrice(userId, item.id, {
+          price: match.extracted_price, priceCheckedAt: fetchedAt, availability: "listed",
+          productId: match.product_id, link: match.link, thumbnail: match.thumbnail,
+        });
+      } else {
+        out.notListed++;
+        await store.updateItemPrice(userId, item.id, { availability: "not_listed" });
+      }
+    } catch (err) {
+      out.failed++;
+    }
+  }
+  return out;
+}
+
 const MAX_CHECKOUT_ITEMS = 100;
 const MAX_AMOUNT = 100000;
 const round2 = n => Math.round(Number(n) * 100) / 100;
@@ -97,7 +155,7 @@ async function checkout(store, userId, body) {
   return { duplicate: false, purchase: result.purchase, budget: budgetView(await store.getBudgetNumbers(userId), 0) };
 }
 
-function createBasketRoutes({ store }) {
+function createBasketRoutes({ store, lookup = null, now = () => new Date() }) {
   const fail = (res, err, message) => {
     if (err.status) return res.status(err.status).json({ error: err.message, code: err.code || null });
     console.error(err);
@@ -105,14 +163,26 @@ function createBasketRoutes({ store }) {
   };
   return {
     // The basket (active items first, then the last few bought) with totals
-    // and the Budget Bank summary.
+    // and the Budget Bank summary. Each item says whether its saved price is
+    // current, stale (with the date it was checked) or no longer listed.
     async get(req, res) {
       try {
-        const [items, numbers] = await Promise.all([store.getList(req.userId), store.getBudgetNumbers(req.userId)]);
+        const at = now();
+        const [rows, numbers] = await Promise.all([store.getList(req.userId), store.getBudgetNumbers(req.userId)]);
+        const items = rows.map(i => ({ ...i, price_status: priceStatusOf(i, at) }));
         const totals = summariseItems(items);
-        res.json({ items, totals, budget: budgetView(numbers, totals.estimatedTotal) });
+        totals.stalePriceCount = items.filter(i => !i.purchased_at && ["stale", "not_listed"].includes(i.price_status)).length;
+        res.json({ items, totals, budget: budgetView(numbers, totals.estimatedTotal), priceFreshHours: PRICE_FRESH_HOURS });
       } catch (err) {
         fail(res, err, "Failed to load your basket");
+      }
+    },
+    async refreshPrices(req, res) {
+      try {
+        if (!lookup) return res.status(503).json({ error: "Price checks aren't available right now." });
+        res.json(await refreshPrices(store, req.userId, { lookup, now: now() }));
+      } catch (err) {
+        fail(res, err, "Prices couldn't be refreshed. Please try again.");
       }
     },
     async checkout(req, res) {
@@ -126,9 +196,13 @@ function createBasketRoutes({ store }) {
   };
 }
 
-function registerBasketRoutes(app, requireAuth, routes, { checkoutLimiter } = {}) {
+function registerBasketRoutes(app, requireAuth, routes, { checkoutLimiter, refreshLimiter } = {}) {
   app.get("/api/basket", requireAuth, routes.get);
+  app.post("/api/basket/refresh-prices", ...(refreshLimiter ? [requireAuth, refreshLimiter] : [requireAuth]), routes.refreshPrices);
   app.post("/api/basket/checkout", ...(checkoutLimiter ? [requireAuth, checkoutLimiter] : [requireAuth]), routes.checkout);
 }
 
-module.exports = { summariseItems, budgetView, cleanCheckout, checkout, createBasketRoutes, registerBasketRoutes };
+module.exports = {
+  PRICE_FRESH_HOURS, priceStatusOf, matchListing, refreshPrices,
+  summariseItems, budgetView, cleanCheckout, checkout, createBasketRoutes, registerBasketRoutes,
+};

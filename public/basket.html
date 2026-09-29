@@ -199,6 +199,10 @@
 <button class="px-5 py-3 rounded-xl bg-primary text-on-primary font-label-lg bk-focusable" type="submit">Add</button>
 </form>
 
+<div class="hidden glass-panel rounded-2xl p-4 mb-3 flex flex-wrap items-center justify-between gap-3" id="stalePrices" role="status">
+<p class="text-sm text-on-surface" id="stalePricesText"></p>
+<button class="px-4 py-2 rounded-xl border border-glass-stroke text-primary font-label-lg hover:bg-white/5 bk-focusable disabled:opacity-50" id="refreshPricesBtn" type="button">Refresh prices</button>
+</div>
 <ul class="flex flex-col gap-3" id="basketList" aria-label="Items in your basket">
 <li class="glass-panel rounded-2xl p-6 text-on-surface-variant">Loading your basket...</li>
 </ul>
@@ -321,6 +325,14 @@
     const price = priceOf(item);
     body.appendChild(el('p', 'text-sm text-on-surface mt-1',
       price != null ? formatZAR(price) + ' each' + (item.store_name ? ' at ' + item.store_name : '') : (item.store_name ? item.store_name + ' · ' : '') + 'Price unknown'));
+    const checked = item.price_checked_at ? ebTimeSince(new Date(item.price_checked_at).getTime()) : null;
+    if (item.price_status === 'current' && checked) {
+      body.appendChild(el('p', 'text-xs text-on-surface-variant', 'Price checked ' + checked));
+    } else if (item.price_status === 'stale') {
+      body.appendChild(el('p', 'text-xs text-yellow-300', (checked ? 'Price from ' + checked : 'Price not checked recently') + ' - it may have changed. Tap Refresh prices.'));
+    } else if (item.price_status === 'not_listed') {
+      body.appendChild(el('p', 'text-xs text-error', 'No longer listed at ' + (item.store_name || 'this shop') + ' - compare in the Shop for a current price.'));
+    }
 
     // Quantity stepper
     const qtyRow = el('div', 'flex items-center gap-2 mt-2');
@@ -455,6 +467,11 @@
     return loadWithCache('/api/basket', {
       render: data => {
         items = data.items || [];
+        const stale = (data.totals && data.totals.stalePriceCount) || 0;
+        document.getElementById('stalePrices').classList.toggle('hidden', !stale);
+        document.getElementById('stalePricesText').textContent = stale
+          ? stale + (stale === 1 ? ' price is' : ' prices are') + ' more than ' + (data.priceFreshHours || 24) + ' hours old or no longer listed. Totals use the saved prices until you refresh.'
+          : '';
         budget = data.budget;
         const ids = new Set(items.map(i => i.id));
         unselected = new Set([...unselected].filter(id => ids.has(id)));
@@ -526,6 +543,29 @@
       input.value = '';
     } catch (err) {
       showToast("Couldn't add: " + err.message, { error: true });
+    }
+  });
+
+  // Re-checks old prices against real current listings (server-side).
+  document.getElementById('refreshPricesBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('refreshPricesBtn');
+    btn.disabled = true;
+    btn.textContent = 'Checking prices...';
+    try {
+      const { data } = await apiSend('POST', '/api/basket/refresh-prices');
+      const parts = [];
+      if (data.changed) parts.push(data.changed + ' price' + (data.changed === 1 ? '' : 's') + ' updated');
+      if (data.confirmed) parts.push(data.confirmed + ' unchanged');
+      if (data.notListed) parts.push(data.notListed + ' no longer listed');
+      if (data.failed) parts.push(data.failed + " couldn't be checked");
+      if (data.skipped) parts.push(data.skipped + ' left for next time');
+      showToast(parts.length ? 'Prices checked: ' + parts.join(', ') : 'All prices are up to date', { error: !!data.failed && !data.changed && !data.confirmed });
+      window.dispatchEvent(new CustomEvent('eb:basket-changed'));
+    } catch (err) {
+      showToast("Couldn't refresh prices: " + err.message, { error: true });
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Refresh prices';
     }
   });
 

@@ -122,9 +122,11 @@ module.exports = {
   async insertListItem(userId, item) {
     const [row] = await sql`
       INSERT INTO grocery_list (user_id, item_name, item_key, product_title, supplier_id, store_name, price,
-                                quantity, unit, category, link, thumbnail, added_from)
+                                quantity, unit, category, link, thumbnail, added_from,
+                                product_id, price_checked_at, availability)
       VALUES (${userId}, ${item.itemName}, ${item.itemKey}, ${item.productTitle}, ${item.supplierId ?? null}, ${item.storeName},
-              ${item.price}, ${item.quantity ?? 1}, ${item.unit ?? null}, ${item.category ?? null}, ${item.link}, ${item.thumbnail}, ${item.addedFrom})
+              ${item.price}, ${item.quantity ?? 1}, ${item.unit ?? null}, ${item.category ?? null}, ${item.link}, ${item.thumbnail}, ${item.addedFrom},
+              ${item.productId ?? null}, ${item.priceCheckedAt ?? null}, ${item.price != null ? "listed" : null})
       RETURNING *
     `;
     return row;
@@ -144,6 +146,9 @@ module.exports = {
           link = CASE WHEN ${has("link")} THEN ${m.link ?? null} ELSE link END,
           thumbnail = CASE WHEN ${has("thumbnail")} THEN ${m.thumbnail ?? null} ELSE thumbnail END,
           unit = CASE WHEN ${has("unit")} THEN ${m.unit ?? null} ELSE unit END,
+          product_id = CASE WHEN ${has("productId")} THEN ${m.productId ?? null} ELSE product_id END,
+          price_checked_at = CASE WHEN ${has("priceCheckedAt")} THEN ${m.priceCheckedAt ?? null}::timestamptz ELSE price_checked_at END,
+          availability = CASE WHEN ${has("price")} AND ${m.price != null} THEN 'listed' ELSE availability END,
           updated_at = NOW()
       WHERE id = ${id} AND user_id = ${userId}
       RETURNING *

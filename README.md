@@ -57,8 +57,11 @@ refreshed manually (not on every page load) to protect your SerpAPI free-tier qu
 npm run refresh-deals
 ```
 
-Run this whenever you want fresh cached deals. It searches ~5 fixed student-relevant
-categories and stores the real results.
+Run this whenever you want fresh deals. It takes the grocery terms students actually
+searched in the last 30 days (at least 2 different students), looks them up live, keeps
+only in-stock listings from approved suppliers and replaces the old deals. The Dashboard
+only shows deals checked in the last 3 days, with the time they were checked; if there
+are none, it says so instead of showing anything made up.
 
 ## Pages
 
@@ -189,6 +192,21 @@ Tapping a chip runs that search. New students see a few starter searches instead
 - **On the server**: Shop searches reuse the same SerpAPI results for 6 hours
   (`search-cache.js`, shared `price_cache` table, no personal data) and report when the
   prices were checked. Smart Basket prices are cached for 24 hours.
+- **Only real data**: every cached result is a real Google Shopping listing from an
+  approved supplier, stored with its product id, shop, price, sale price, link, picture,
+  availability and the time it was checked. Nothing is filled in when data is missing:
+  no starter searches, no staple suggestions, no sample deals - pages show an empty state.
+  Cache keys are versioned (`v2:`); older-format entries are deleted at startup and
+  re-fetched, and entries in the wrong format are never served.
+- **Expiry and refresh**: an expired price is never shown as current. Smart Basket
+  re-checks it (or says "not checked yet"); the Shop re-runs an old saved search when
+  online; basket items and favourites show when their price was checked, and the basket
+  flags prices older than 24 hours with a **Refresh prices** button
+  (`POST /api/basket/refresh-prices`, up to 8 items a time) that matches the same product
+  at the same shop, updates the price, or marks it "no longer listed" - never another
+  shop's price.
+- **Invalidation**: searching, favourites, basket and grocery-list changes, changing your
+  area, refreshing prices and confirming a purchase each clear the cached pages they affect.
 
 ## Forgot password
 
@@ -231,6 +249,8 @@ network needed (in-memory stores and fakes):
 - `nearby.test.js` - distances, invalid locations, nearby-first sorting, branch lookups, area API
 - `basket.test.js` - basket totals, Budget Bank maths, checkout rules (R0 floor, duplicates, ownership)
 - `grocery-pdf.test.js` - PDF content, empty list, paging
+- `deals.test.js` - Trending Deals: only recent, priced, approved-supplier rows
+- `real-data-cache.test.js` - cached/saved data matches the real listing; old prices are refreshed or flagged
 
 Real-database checks for Confirm purchase (simultaneous checkouts, resent taps, the R0
 floor) - needs `DATABASE_URL`, creates and deletes temporary users:
@@ -260,7 +280,7 @@ automatically once `NODE_ENV=production` is set behind HTTPS).
 
 - Uber/taxi costs are formula-based estimates (`server.js`, near `UBER_BASE_FARE` etc.),
   not live fares from either service - no public free API exists for that.
-- Trending Deals are cached, not live per page load (quota protection).
+- Trending Deals are refreshed by `npm run refresh-deals`, not live per page load (quota protection); deals older than 3 days are hidden.
 - Distance filtering on the Search page's radius slider is visual only; actual radius
   filtering of results isn't implemented yet (SerpAPI's `location` param biases
   results regionally but doesn't hard-filter by exact km).

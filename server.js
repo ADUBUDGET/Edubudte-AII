@@ -9,6 +9,8 @@ const authRoutes = require("./auth");
 const smartBasket = require("./smart-basket");
 const smartBasketStore = require("./smart-basket-store");
 const searchCache = require("./search-cache");
+const shoppingResults = require("./shopping-results");
+const { selectCurrentDeals, DEALS_MAX_AGE_DAYS } = require("./deals");
 const suppliers = require("./suppliers");
 const locationApi = require("./location");
 const locationStore = require("./location-store");
@@ -93,8 +95,9 @@ const locationService = locationApi.createLocationService({
 
 // Google Shopping results are pinned to one region (the student's exact
 // area is handled by nearby-shop distances instead - SerpAPI rejects
-// place names it doesn't know).
-const SHOPPING_LOCATION = process.env.SHOPPING_LOCATION || "Durban, KwaZulu-Natal, South Africa";
+// place names it doesn't know). Fetching and mapping live in
+// shopping-results.js so every cache holds the same real fields.
+const { SHOPPING_LOCATION, fetchShoppingResults } = shoppingResults;
 
 app.post("/api/search", requireAuth, async (req, res) => {
   try {
@@ -111,29 +114,7 @@ app.post("/api/search", requireAuth, async (req, res) => {
       fetched = await searchCache.getOrFetchResults({
         store: smartBasketStore,
         key: searchCache.searchCacheKey(item, SHOPPING_LOCATION),
-        fetcher: async () => {
-          const params = new URLSearchParams({
-            engine: "google_shopping",
-            q: String(item).trim().toLowerCase(),
-            api_key: process.env.SERPAPI_KEY,
-            gl: "za",
-            hl: "en",
-            location: SHOPPING_LOCATION,
-          });
-          const serpResp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
-          if (!serpResp.ok) {
-            throw Object.assign(new Error("SerpAPI request failed"), { status: 502, detail: await serpResp.text() });
-          }
-          const serpData = await serpResp.json();
-          return (serpData.shopping_results || []).slice(0, 40).map(r => ({ // all 40: many are filtered out by suppliers.js
-            title: r.title,
-            price: r.price,
-            extracted_price: r.extracted_price,
-            source: r.source,
-            link: r.product_link || r.link || null, // SerpAPI now returns product_link
-            thumbnail: r.thumbnail,
-          }));
-        },
+        fetcher: () => fetchShoppingResults(item),
       });
     } catch (err) {
       if (err.status === 502) return res.status(502).json({ error: err.message, detail: err.detail });
@@ -247,10 +228,15 @@ app.get("/api/search/frequent", requireAuth, async (req, res) => {
 // ---------------------------------------------------------------
 app.get("/api/deals", requireAuth, async (req, res) => {
   try {
-    const rows = await sql`
-      SELECT * FROM trending_deals ORDER BY fetched_at DESC LIMIT 20
-    `;
-    res.json({ deals: rows, cacheNote: "These are cached real search results, refreshed periodically (not live per page load) to protect API quota." });
+    const rows = await sql`SELECT * FROM trending_deals ORDER BY fetched_at DESC LIMIT 100`;
+    // Only recent deals from approved suppliers (deals.js); older prices
+    // aren't shown as current.
+    const deals = selectCurrentDeals(rows);
+    res.json({
+      deals,
+      checkedAt: deals.length ? deals[0].fetched_at : null,
+      maxAgeDays: DEALS_MAX_AGE_DAYS,
+    });
   } catch (err) {
     res.status(500).json({ error: "Failed to load deals", detail: err.message });
   }
@@ -899,8 +885,19 @@ app.get("/api/specials", requireAuth, async (req, res) => {
 // BASKET + BUDGET BANK: GET /api/basket (items, totals, budget) and
 // POST /api/basket/checkout ("Confirm purchase") - see basket.js.
 // ---------------------------------------------------------------
-basket.registerBasketRoutes(app, requireAuth, basket.createBasketRoutes({ store: basketStore }), {
+// Refresh prices re-checks stale basket prices against the same cached real
+// Google Shopping data the Shop uses (6-hour cache shared by all students).
+const basketPriceLookup = async term => {
+  const { results, fetchedAt } = await searchCache.getOrFetchResults({
+    store: smartBasketStore,
+    key: searchCache.searchCacheKey(term, SHOPPING_LOCATION),
+    fetcher: () => fetchShoppingResults(term),
+  });
+  return { results, fetchedAt };
+};
+basket.registerBasketRoutes(app, requireAuth, basket.createBasketRoutes({ store: basketStore, lookup: basketPriceLookup }), {
   checkoutLimiter: rateLimit({ windowMs: 60 * 1000, max: 10, message: { error: "Too many purchase attempts, please wait a moment." } }),
+  refreshLimiter: rateLimit({ windowMs: 60 * 1000, max: 3, message: { error: "Prices were just refreshed - please wait a minute." } }),
 });
 
 // ---------------------------------------------------------------

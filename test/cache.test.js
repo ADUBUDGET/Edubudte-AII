@@ -185,3 +185,38 @@ test("basket changes and a new shopping area clear the right caches", () => {
   assert.equal(cache.get("/api/location"), null);
   assert.equal(cache.get("/api/smart-basket"), null, "suggestions are re-priced for the new area");
 });
+
+test("changing the shopping area clears the saved last search (its distances are for the old area)", () => {
+  const cache = createApiCache(memoryStorage());
+  cache.setOwner(1);
+  cache.set("/page/search/last", { results: [{ distanceKm: 2 }] });
+  cache.set("/api/favourites", []);
+  cache.invalidateFor("/api/location");
+  assert.equal(cache.get("/page/search/last"), null);
+  assert.ok(cache.get("/api/favourites"));
+});
+
+test("refreshing basket prices refreshes the cached basket", () => {
+  const cache = createApiCache(memoryStorage());
+  cache.setOwner(1);
+  cache.set("/api/basket", { items: [] });
+  cache.invalidateFor("/api/basket/refresh-prices");
+  assert.equal(cache.get("/api/basket"), null);
+});
+
+test("every change the brief lists clears the matching cached data", () => {
+  const cases = {
+    "/api/search": ["/api/search/frequent"],                       // searching
+    "/api/favourites/3": ["/api/favourites"],                      // add/remove favourite
+    "/api/grocery-list/5": ["/api/basket", "/api/grocery-list"],   // basket / grocery list
+    "/api/location": ["/api/location", "/page/search/last"],       // preferred location
+    "/api/basket/checkout": ["/api/basket", "/api/budget"],        // purchase
+  };
+  for (const [changed, cleared] of Object.entries(cases)) {
+    const cache = createApiCache(memoryStorage());
+    cache.setOwner(1);
+    cleared.forEach(u => cache.set(u, {}));
+    cache.invalidateFor(changed);
+    cleared.forEach(u => assert.equal(cache.get(u), null, `${changed} should clear ${u}`));
+  }
+});
