@@ -12,6 +12,9 @@ const searchCache = require("./search-cache");
 const { rankFrequentSearches } = require("./frequent-searches");
 const favourites = require("./favourites");
 const favouritesStore = require("./favourites-store");
+const passwordReset = require("./password-reset");
+const passwordResetStore = require("./password-reset-store");
+const mailer = require("./mailer");
 
 const app = express();
 app.use(express.json());
@@ -36,6 +39,17 @@ app.post("/api/auth/login", authLimiter, authRoutes.login);
 app.post("/api/auth/logout", authRoutes.logout);
 app.get("/api/auth/me", authRoutes.requireAuth, authRoutes.me);
 app.put("/api/auth/profile", authRoutes.requireAuth, authRoutes.updateProfile);
+
+// Forgot Password (see password-reset.js). Tighter limits than login: a
+// few link requests per IP, and a handful of reset attempts.
+passwordReset.registerPasswordResetRoutes(
+  app,
+  passwordReset.createPasswordResetRoutes({ store: passwordResetStore, mailer }),
+  {
+    requestLimiter: rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { error: "Too many reset requests. Please wait 15 minutes and try again." } }),
+    resetLimiter: rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: "Too many attempts. Please wait 15 minutes and try again." } }),
+  }
+);
 
 const requireAuth = authRoutes.requireAuth;
 

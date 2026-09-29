@@ -183,4 +183,29 @@ ${button(openUrl, "Open EduBudget AI")}`;
   };
 }
 
-module.exports = { appUrl, isMailConfigured, sendMail, unsubscribeUrl, verifyUnsubscribe, escapeHtml, welcomeEmail, digestEmail };
+// Transactional (no unsubscribe link): sent only when the student asks for it.
+function passwordResetEmail({ name, resetUrl, minutes }) {
+  const hi = firstName(name);
+  const greeting = hi ? `Hi ${hi},` : "Hi there,";
+  const bodyHtml = `
+<p style="margin:0 0 16px;">${escapeHtml(greeting)}</p>
+<p style="margin:0 0 16px;">We got a request to reset the password for your EduBudget AI account. Tap the button below to choose a new one.</p>
+${button(resetUrl, "Reset my password")}
+<p style="margin:24px 0 0;color:#ddc1ae;font-size:14px;line-height:20px;">This link expires in ${escapeHtml(minutes)} minutes and can only be used once. If you didn't ask to reset your password, you can ignore this email - your password won't change.</p>`;
+  const text = [
+    greeting,
+    "",
+    "We got a request to reset the password for your EduBudget AI account.",
+    `Reset your password: ${resetUrl}`,
+    "",
+    `This link expires in ${minutes} minutes and can only be used once.`,
+    "If you didn't ask to reset your password, you can ignore this email - your password won't change.",
+  ].join("\n");
+  return {
+    subject: "Reset your EduBudget AI password",
+    html: layout({ preheader: "Choose a new password for EduBudget AI.", heading: "Reset your password", bodyHtml }),
+    text,
+  };
+}
+
+module.exports = { appUrl, isMailConfigured, sendMail, unsubscribeUrl, verifyUnsubscribe, escapeHtml, welcomeEmail, digestEmail, passwordResetEmail };
