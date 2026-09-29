@@ -88,15 +88,20 @@ half-life). One purchase, one ticked-off item, or two searches are enough to qua
 card says why it was suggested. Students with too little history get terms that at least 3
 different students have searched for (never who searched), then common staples.
 
-**Where prices come from**: store specials running today (`store_specials`) and real SerpAPI
-Google Shopping results for South Africa. Only listings whose title contains every word of
-the item count, and accessories like "milk frother" are ignored. The cheapest one is shown,
-compared with the cheapest offer at a different store. If nothing matches, the card says so.
-No price is ever guessed.
+**Where prices come from**: South African retailers only. That means store specials running
+today (`store_specials`) plus real SerpAPI Google Shopping results pinned to Durban
+(`SHOPPING_LOCATION` in `smart-basket.js`), from known chains (Shoprite, Checkers, Pick n
+Pay, Spar, Woolworths, Boxer, Makro, Game, Usave, OK Foods, Food Lover's Market, Clicks,
+Dis-Chem) or any `.co.za` shop. Foreign shops and marketplaces are ignored.
+- A listing counts only if its title contains every word of the item, and accessories like
+  "milk frother" are ignored.
+- If the cheapest listing costs under a third of the next one (a listing error, like R5
+  bread next to R28.99), it is dropped. Team-entered specials are exempt.
+- The cheapest remaining listing is shown and compared with the cheapest at a different
+  SA retailer. If no SA retailer lists the item, the card says so. No price is ever guessed.
 
 **Quota protection**: SerpAPI results are cached per search term for 24 hours in `price_cache`
-(shared, no personal data). Normal Shop searches without a typed location fill the same cache
-for free. One Smart Basket load makes at most 3 live lookups; other cards are priced when they
+(shared, no personal data). One Smart Basket load makes at most 3 live lookups; other cards are priced when they
 reach the top of the stack (`/api/smart-basket/price`, rate limited to 10/min).
 
 **Tables**: `grocery_list`, `smart_basket_state` (skipped/hidden per user) and `price_cache`,
@@ -136,6 +141,8 @@ automatically once `NODE_ENV=production` is set behind HTTPS).
 - Distance filtering on the Search page's radius slider is visual only; actual radius
   filtering of results isn't implemented yet (SerpAPI's `location` param biases
   results regionally but doesn't hard-filter by exact km).
-- Smart Basket prices are South Africa-wide (like a Shop search with no location), not
-  per branch, so "cheapest" doesn't account for travel distance or branch stock.
+- Smart Basket prices come from Google Shopping listings around Durban, not from each
+  branch's shelf, so "cheapest" doesn't account for travel distance or branch stock.
+  Google's results also vary from search to search, so an item can occasionally show no
+  SA retailer price until the cache refreshes the next day.
 - Pack sizes are read from listing titles, so a card shows no size if the title has none.

@@ -150,11 +150,14 @@ const singular = w => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.
 // and the title isn't an accessory the student didn't ask for, so "milk"
 // can't be "cheapest" via a R10 milk frother. Plurals match singulars
 // ("eggs" ~ "egg").
+// Words of 4+ letters may also match the start of a title word, which copes
+// with run-together listings like "Baked Beansin Tomato Sauce".
 function titleMatches(query, title) {
   const words = normaliseKey(query).split(" ").filter(w => w && !STOP_WORDS.has(w)).map(singular);
   if (words.length === 0) return false;
   const titleWords = new Set(normaliseKey(title).split(" ").map(singular));
-  if (!words.every(w => titleWords.has(w))) return false;
+  const found = w => titleWords.has(w) || (w.length >= 4 && [...titleWords].some(t => t.startsWith(w)));
+  if (!words.every(found)) return false;
   const queryWords = new Set(words);
   return ![...titleWords].some(w => ACCESSORY_WORDS.has(w) && !queryWords.has(w));
 }
@@ -207,13 +210,45 @@ function toOffers({ shoppingResults = [], specials = [] }) {
 
 const round2 = n => Math.round(n * 100) / 100;
 
-// Picks the cheapest offer that genuinely matches the item, and compares it
-// with the cheapest offer from a *different* store. Returns null if no
-// relevant, priced offer exists - never a guessed price.
+// South African retail chains students actually shop at. Matched as whole
+// words in the normalised store name, so "Checkers Sixty60", "makro.co.za"
+// and "Pick n Pay Online" all count.
+const SA_RETAILER_PATTERN = new RegExp("\\b(" + [
+  "shoprite", "checkers", "pick n pay", "picknpay", "pnp", "spar", "superspar", "kwikspar",
+  "woolworths", "boxer", "makro", "game", "usave", "ok foods", "ok grocer",
+  "food lover s market", "food lovers market", "clicks", "dis chem", "dischem",
+].join("|") + ")\\b");
+
+// Known chains, plus any South African online shop (a .co.za store name).
+function isSaRetailer(store) {
+  const s = String(store || "").toLowerCase();
+  return SA_RETAILER_PATTERN.test(normaliseKey(store)) || /\.co\.za\b/.test(s);
+}
+
+// A listing priced under this fraction of the next cheapest one is treated
+// as a listing error, e.g. R5 brown bread when the next is R28.99.
+const OUTLIER_FRACTION = 1 / 3;
+
+// Drops implausibly cheap listings from a price-sorted list. Store specials
+// entered by the team are trusted and never dropped.
+function dropPriceOutliers(sorted) {
+  const out = [...sorted];
+  while (out.length >= 2 && out[0].kind !== "special" && out[0].price < out[1].price * OUTLIER_FRACTION) {
+    out.shift();
+  }
+  return out;
+}
+
+// Picks the cheapest offer from a South African retailer (or the team's
+// store specials) that genuinely matches the item, and compares it with the
+// cheapest offer from a *different* SA retailer. Returns null if no SA
+// retailer has a relevant, priced offer - never a guessed or foreign price.
 function pickCheapest(query, offers) {
-  const relevant = offers
+  const local = offers
     .filter(o => Number.isFinite(o.price) && o.price > 0 && titleMatches(query, o.title))
+    .filter(o => o.kind === "special" || isSaRetailer(o.store))
     .sort((a, b) => a.price - b.price);
+  const relevant = dropPriceOutliers(local);
   if (relevant.length === 0) return null;
 
   const best = relevant[0];
@@ -238,20 +273,31 @@ function pickCheapest(query, offers) {
   };
 }
 
-// Real SerpAPI Google Shopping lookup - same engine and region as /api/search.
+// Smart Basket searches are pinned to Durban (where DUT is): this brings far
+// more local chains (Shoprite, Makro, Woolworths...) into the results than a
+// country-wide search, which is dominated by marketplaces and foreign shops.
+const SHOPPING_LOCATION = "Durban, KwaZulu-Natal, South Africa";
+
+// Cache keys carry the location so results from other searches aren't mixed in.
+const priceCacheKey = name => `durban:${normaliseKey(name)}`;
+
+// Real SerpAPI Google Shopping lookup for South African results near Durban.
 async function fetchGoogleShopping(query) {
   if (!process.env.SERPAPI_KEY) throw new Error("SERPAPI_KEY not configured on server");
   const params = new URLSearchParams({
     engine: "google_shopping",
-    q: query,
+    // Lowercase on purpose: "Pasta" returned only foreign shops while
+    // "pasta" returned Shoprite and Makro.
+    q: String(query).trim().toLowerCase(),
     api_key: process.env.SERPAPI_KEY,
     gl: "za",
     hl: "en",
+    location: SHOPPING_LOCATION,
   });
   const resp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
   if (!resp.ok) throw new Error(`SerpAPI request failed (${resp.status})`);
   const data = await resp.json();
-  return (data.shopping_results || []).slice(0, 20).map(r => ({
+  return (data.shopping_results || []).slice(0, 40).map(r => ({
     title: r.title,
     price: r.price,
     extracted_price: r.extracted_price,
@@ -343,7 +389,7 @@ async function loadSuggestions(store, userId, now = new Date()) {
 // cached or live SerpAPI results. `budget.live` is a shared counter of how
 // many live lookups this request may still make.
 async function priceItem(name, { store, fetchShopping, specials, budget, now = new Date() }) {
-  const key = normaliseKey(name);
+  const key = priceCacheKey(name);
   const matchingSpecials = specials.filter(s => titleMatches(name, s.item));
   let shoppingResults = [];
   let checkedAt = null;
@@ -529,6 +575,8 @@ module.exports = {
   titleMatches,
   parseSize,
   toOffers,
+  isSaRetailer,
+  dropPriceOutliers,
   pickCheapest,
   addItemToList,
   setSuggestionState,

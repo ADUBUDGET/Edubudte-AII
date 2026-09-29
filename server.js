@@ -111,14 +111,6 @@ app.post("/api/search", requireAuth, async (req, res) => {
       thumbnail: r.thumbnail,
     }));
 
-    // Smart Basket: reuse these real results as the price cache for this term
-    // (national results only, so typed-location searches aren't cached).
-    // Never lets a cache problem break the search itself.
-    if (!location) {
-      smartBasketStore.saveCachedPrices(smartBasket.normaliseKey(item), rawResults)
-        .catch(e => console.error("Price cache save failed:", e.message));
-    }
-
     // Respect Min/Max price - previously collected in the UI but never applied.
     if (minPrice) rawResults = rawResults.filter(r => r.extracted_price == null || r.extracted_price >= Number(minPrice));
     if (maxPrice) rawResults = rawResults.filter(r => r.extracted_price == null || r.extracted_price <= Number(maxPrice));

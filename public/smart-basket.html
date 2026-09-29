@@ -354,7 +354,7 @@
     if (!p) {
       const messages = {
         not_checked: 'Price not checked yet.',
-        no_match: 'No matching listing found in current prices.',
+        no_match: 'No South African retailer price found for this item.',
         error: "Couldn't check prices right now - try again later.",
       };
       box.appendChild(el('p', 'font-body-md text-on-surface-variant', messages[s.priceStatus] || 'No price available.'));
@@ -379,7 +379,7 @@
     } else {
       compare = 'Only ' + (p.store || 'one store') + ' had a matching price';
     }
-    box.appendChild(el('p', 'font-label-sm text-on-surface', compare + ' · ' + p.storesCompared + (p.storesCompared === 1 ? ' store' : ' stores') + ' compared'));
+    box.appendChild(el('p', 'font-label-sm text-on-surface', compare + ' · ' + p.storesCompared + ' SA retailer' + (p.storesCompared === 1 ? '' : 's') + ' compared'));
     if (remainingBudget != null) {
       const left = remainingBudget - p.price;
       box.appendChild(el('p', 'font-label-sm ' + (left < 0 ? 'text-error' : 'text-on-surface-variant'),

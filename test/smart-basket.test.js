@@ -237,7 +237,7 @@ test("pickCheapest returns null rather than inventing a price", () => {
 
 test("priceItem uses the cache, limits live lookups, and never guesses", async () => {
   const store = createFakeStore({
-    cache: { rice: { results: [{ title: "Rice 2kg", extracted_price: 40, source: "Spar" }], fetchedAt: daysAgo(0.5) } },
+    cache: { "durban:rice": { results: [{ title: "Rice 2kg", extracted_price: 40, source: "Spar" }], fetchedAt: daysAgo(0.5) } },
   });
   let liveCalls = 0;
   const fetchShopping = async () => { liveCalls++; return [{ title: "Pasta 500g", extracted_price: 18, source: "Boxer" }]; };
@@ -251,7 +251,7 @@ test("priceItem uses the cache, limits live lookups, and never guesses", async (
   assert.equal(liveCalls, 1);
   assert.equal(rice.price.price, 40);
   assert.equal(pasta.price.store, "Boxer");
-  assert.ok(store.data.cache.has("pasta"));
+  assert.ok(store.data.cache.has("durban:pasta"));
   assert.equal(eggs.price, null);
   assert.equal(eggs.priceStatus, "not_checked");
 });
@@ -423,4 +423,106 @@ test("grocery list routes accept numeric ids and 404 anything else", async () =>
   const otherUser = fakeRes();
   await routes.updateListItem({ userId: 2, params: { id: String(item.id) }, body: { purchased: false } }, otherUser);
   assert.equal(otherUser.statusCode, 404);
+});
+
+// ---------------------------------------------------------------
+// South African retailers and price outliers
+// ---------------------------------------------------------------
+test("recognises South African retail chains by store name", () => {
+  for (const s of ["Shoprite", "Checkers Sixty60", "Pick n Pay Online", "makro.co.za", "SPAR", "Food Lover's Market", "Dis-Chem", "Woolworths"]) {
+    assert.ok(sb.isSaRetailer(s), s);
+  }
+  for (const s of ["Musafir Cash & Carry", "Desertcart.ae", "Sparkle Deals", "Takealot"]) {
+    assert.ok(!sb.isSaRetailer(s), s);
+  }
+});
+
+test("drops a listing priced far below the others (e.g. R0.90 rice)", () => {
+  const offers = sb.toOffers({
+    shoppingResults: [
+      { title: "Spekko Parboiled Rice (10 x 500g)", extracted_price: 0.9, source: "Musafir Cash & Carry" },
+      { title: "Econo White Parboiled Rice 500g", extracted_price: 8.95, source: "makro.co.za" },
+      { title: "White Rice 1kg", extracted_price: 14.99, source: "Spice World" },
+      { title: "Tastic Parboiled Rice 1kg", extracted_price: 24.99, source: "Shoprite" },
+    ],
+  });
+  const best = sb.pickCheapest("rice", offers);
+  assert.equal(best.price, 8.95);
+  assert.equal(best.store, "makro.co.za");
+});
+
+test("brown bread: R5 outlier is ignored and a Shoprite price wins over other stores", () => {
+  const offers = sb.toOffers({
+    shoppingResults: [
+      { title: "Standard Brown Bread 600g", extracted_price: 5, source: "Shoprite" },
+      { title: "Sasko Low GI Wholewheat Brown Bread 800g", extracted_price: 28.99, source: "Shoprite" },
+      { title: "Sasko Brown Low GI Seeded Bread", extracted_price: 32, source: "Impala Vleis" },
+      { title: "Lamb Curry Toast Brown Bread", extracted_price: 91, source: "Delivery 24" },
+    ],
+  });
+  const best = sb.pickCheapest("brown bread", offers);
+  assert.equal(best.price, 28.99);
+  assert.equal(best.store, "Shoprite");
+});
+
+test("prefers SA retailers even when another store is cheaper", () => {
+  const offers = sb.toOffers({
+    shoppingResults: [
+      { title: "Peanut Butter 400g", extracted_price: 29.99, source: "International Food Group" },
+      { title: "Black Cat Peanut Butter 400g", extracted_price: 36.99, source: "Checkers" },
+      { title: "Black Cat Peanut Butter 400g", extracted_price: 38.49, source: "Pick n Pay" },
+    ],
+  });
+  const best = sb.pickCheapest("peanut butter", offers);
+  assert.equal(best.store, "Checkers");
+  assert.deepEqual(best.nextCheapest, { store: "Pick n Pay", price: 38.49 });
+  assert.equal(best.storesCompared, 2);
+});
+
+test("never falls back to foreign shops or non-grocery listings", () => {
+  const offers = sb.toOffers({
+    shoppingResults: [
+      { title: "La Molisana Pasta Anellini", extracted_price: 236.77, source: "Desertcart.ae" },
+      { title: "Bob the Builder: Pilchard Steals", extracted_price: 75.95, source: "World of Books" },
+    ],
+  });
+  assert.equal(sb.pickCheapest("pasta", offers), null);
+  assert.equal(sb.pickCheapest("pilchards", offers), null);
+});
+
+test("South African .co.za online shops count as SA retailers", () => {
+  assert.ok(sb.isSaRetailer("IndiaBazaar.co.za"));
+  const best = sb.pickCheapest("rice", sb.toOffers({ shoppingResults: [{ title: "Basmati Rice 1kg", extracted_price: 39, source: "IndiaBazaar.co.za" }] }));
+  assert.equal(best.store, "IndiaBazaar.co.za");
+});
+
+test("outlier check compares against the next cheapest SA listing", () => {
+  const offers = sb.toOffers({
+    shoppingResults: [
+      { title: "Pasta 500g", extracted_price: 18.99, source: "Shoprite" },
+      { title: "Pasta Screws 500g", extracted_price: 18.95, source: "Makro" },
+      { title: "Corn Pasta 500g", extracted_price: 82.99, source: "Dis-Chem" },
+    ],
+  });
+  const best = sb.pickCheapest("pasta", offers);
+  assert.equal(best.price, 18.95);
+  assert.deepEqual(best.nextCheapest, { store: "Shoprite", price: 18.99 });
+});
+
+test("store specials are never treated as outliers", () => {
+  const offers = sb.toOffers({
+    shoppingResults: [
+      { title: "Rice 2kg", extracted_price: 45, source: "Checkers" },
+      { title: "Rice 2kg", extracted_price: 48, source: "Spar" },
+      { title: "Rice 2kg", extracted_price: 50, source: "Pick n Pay" },
+    ],
+    specials: [{ store: "Shoprite", item: "Rice 2kg", price: "12.99", was_price: "44.99", ends_on: "2026-10-01" }],
+  });
+  assert.equal(sb.pickCheapest("rice", offers).price, 12.99);
+});
+
+test("titleMatches copes with run-together words but not short prefixes", () => {
+  assert.ok(sb.titleMatches("baked beans", "Baked Beansin Tomato Sauce 400G"));
+  assert.ok(!sb.titleMatches("eggs", "Fresh Eggplant 1kg"));
+  assert.ok(!sb.titleMatches("rice", "Best price on pasta"));
 });
