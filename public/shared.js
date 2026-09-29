@@ -82,7 +82,9 @@ const EB_INVALIDATION_RULES = [
   [/^\/api\/smart-basket\//, ["/api/smart-basket"]],
   [/^\/api\/auth\/profile/, ["/api/auth/me", "/api/dashboard", "/api/analytics", "/api/smart-basket", "/api/basket"]],
   [/^\/api\/search$/, ["/api/search/frequent", "/api/dashboard", "/api/smart-basket"]],
-  [/^\/api\/location/, ["/api/location", "/api/smart-basket"]],
+  // Distances in the saved last Shop search depend on the area.
+  [/^\/api\/location/, ["/api/location", "/api/smart-basket", "/page/search/last"]],
+  [/^\/api\/basket\/refresh-prices/, ["/api/basket", "/api/grocery-list"]],
 ];
 
 // Escapes text for the few places that still build HTML strings
@@ -338,18 +340,19 @@ function renderBudgetBar(container, { showBasketLink = true } = {}) {
 // MOST FREQUENTLY SEARCHED: a scrollable row of chips from the student's
 // own search history (GET /api/search/frequent). Used on Shop and Bank.
 // ---------------------------------------------------------------
-const EB_STARTER_SEARCHES = ["Bread", "Milk", "Eggs", "Rice", "Toilet paper"];
 
 function renderFrequentSearches(container, { onPick }) {
-  const draw = (items, isStarter) => {
+  // Only the student's own real searches - no made-up starter chips.
+  const draw = items => {
     container.textContent = "";
     const head = ebEl("div", "eb-freq-head");
-    head.appendChild(ebEl("span", "eb-freq-title", isStarter ? "Try searching for" : "Most frequently searched"));
-    if (isStarter) head.appendChild(ebEl("span", "eb-freq-note", "Your top searches will appear here"));
+    head.appendChild(ebEl("span", "eb-freq-title", "Most frequently searched"));
+    if (!items.length) head.appendChild(ebEl("span", "eb-freq-note", "Your most searched items will appear here after you search."));
     container.appendChild(head);
+    if (!items.length) return;
     const row = ebEl("div", "eb-freq-row");
     row.setAttribute("role", "group");
-    row.setAttribute("aria-label", isStarter ? "Suggested searches" : "Most frequently searched");
+    row.setAttribute("aria-label", "Most frequently searched");
     items.forEach(item => {
       const chip = ebEl("button", "eb-chip");
       chip.type = "button";
@@ -364,9 +367,7 @@ function renderFrequentSearches(container, { onPick }) {
   ebEnsureStyles();
   return loadWithCache("/api/search/frequent", {
     render: data => {
-      const items = (data && data.items) || [];
-      if (items.length) draw(items, false);
-      else draw(EB_STARTER_SEARCHES.map(label => ({ label, query: label, count: 0 })), true);
+      draw((data && data.items) || []);
     },
     onError: () => { container.textContent = ""; }, // optional extra: hide quietly
   });

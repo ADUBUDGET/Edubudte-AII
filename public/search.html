@@ -504,6 +504,7 @@
     try {
       await addToBasket({
         itemName: r.title, productTitle: r.title, supplierId: r.supplierId, price: r.extracted_price ?? null,
+        productId: r.product_id || null, priceCheckedAt: lastPricesCheckedAt,
         quantity: 1, link: r.link || null, thumbnail: r.thumbnail || null, addedFrom: 'shop',
       });
     } catch (err) {
@@ -598,7 +599,8 @@
     const r = currentResults[i];
     try {
       const { data } = await apiSend('POST', '/api/favourites', {
-        itemName: r.title, storeName: r.source, price: r.extracted_price ?? null, link: r.link || null, thumbnail: r.thumbnail || null,
+        itemName: r.title, storeName: r.source, supplierId: r.supplierId || null, price: r.extracted_price ?? null, link: r.link || null, thumbnail: r.thumbnail || null,
+        productId: r.product_id || null, priceCheckedAt: lastPricesCheckedAt,
       });
       showToast(data.alreadyExisted ? 'Already in your favourites - saved price updated' : 'Added to favourites');
     } catch (err) {
@@ -637,8 +639,12 @@
     renderResults(currentResults);
     const age = Date.now() - new Date(last.pricesCheckedAt).getTime();
     if (age > EB_MAX_AGE.prices) {
+      // Older prices are never shown as current: refresh straight away when
+      // online (the server reuses its own recent real results, so this is
+      // usually free), otherwise say clearly how old they are.
       const countLabel = document.getElementById('resultsCountLabel');
-      countLabel.textContent = 'Your last search - prices may have changed since ' + ebTimeSince(new Date(last.pricesCheckedAt).getTime()) + '. Tap Search Local for current prices.';
+      countLabel.textContent = 'Your last search - prices from ' + ebTimeSince(new Date(last.pricesCheckedAt).getTime()) + (navigator.onLine === false ? ' (you’re offline, so they may have changed).' : ', updating...');
+      if (navigator.onLine !== false && last.form.item) doSearch();
     }
     return true;
   }
