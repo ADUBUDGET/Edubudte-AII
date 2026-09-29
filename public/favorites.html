@@ -235,6 +235,14 @@
 <span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
 <span class="">Shop</span>
 </a>
+<a class="text-on-surface font-label-lg text-label-lg hover:text-primary transition-colors flex items-center space-x-2" href="/basket.html">
+<span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
+<span class="">Basket</span>
+</a>
+<a class="text-on-surface font-label-lg text-label-lg hover:text-primary transition-colors flex items-center space-x-2" href="/favourites.html">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="">Favourites</span>
+</a>
 <a class="text-on-surface font-label-lg text-label-lg hover:text-primary transition-colors flex items-center space-x-2" href="/analytics.html">
 <span class="material-symbols-outlined" data-icon="insights">insights</span>
 <span class="">Budget</span>
@@ -396,7 +404,7 @@
 <div class="flex items-center justify-between mb-6">
 <div>
 <h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background text-on-background">Saved Essentials</h2>
-<p class="font-body-md text-body-md text-on-surface-variant text-on-surface">Your bookmarked tech and study gear.</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-on-surface">Your saved products. <a class="text-primary hover:underline" href="/favourites.html">Open Favourites</a> to tick them off as you shop.</p>
 </div>
 <div class="flex space-x-2">
 <button class="w-10 h-10 rounded-full glass-panel flex items-center justify-center hover:bg-white/10 transition-colors text-primary border-white/10">
@@ -415,21 +423,29 @@
 <!-- BottomNavBar (Mobile Only) -->
 <nav class="md:hidden bg-glass-surface dark:bg-glass-surface fixed bottom-0 w-full rounded-t-xl backdrop-blur-3xl border-t border-glass-stroke shadow-none z-50 border-white/10 bg-black/60">
 <div class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe">
-<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl" href="/dashboard.html">
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-0 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl flex-1 min-w-0" href="/dashboard.html">
 <span class="material-symbols-outlined mb-1" data-icon="account_balance">account_balance</span>
-<span class="font-label-sm text-label-sm">Bank</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Bank</span>
 </a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl" href="/search.html">
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-0 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl flex-1 min-w-0" href="/search.html">
 <span class="material-symbols-outlined mb-1" data-icon="shopping_bag">shopping_bag</span>
-<span class="font-label-sm text-label-sm">Shop</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Shop</span>
 </a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl" href="/analytics.html">
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-0 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl flex-1 min-w-0" href="/basket.html">
+<span class="material-symbols-outlined mb-1" data-icon="shopping_basket">shopping_basket</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Basket</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-0 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl flex-1 min-w-0" href="/favourites.html">
+<span class="material-symbols-outlined mb-1" data-icon="favorite">favorite</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Favourites</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-0 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform rounded-xl flex-1 min-w-0" href="/analytics.html">
 <span class="material-symbols-outlined mb-1" data-icon="insights">insights</span>
-<span class="font-label-sm text-label-sm">Budget</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Budget</span>
 </a>
-<a class="flex flex-col items-center justify-center bg-primary-container/20 rounded-xl p-2 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform text-white" href="/favorites.html">
+<a class="flex flex-col items-center justify-center bg-primary-container/20 rounded-xl py-2 px-0 shadow-[0_0_15px_rgba(255,140,0,0.3)] hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform text-white flex-1 min-w-0" href="/favorites.html">
 <span class="material-symbols-outlined mb-1" data-icon="person" data-weight="fill" style="font-variation-settings: 'FILL' 1;">person</span>
-<span class="font-label-sm text-label-sm">Profile</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Profile</span>
 </a>
 </div>
 </nav>
@@ -450,14 +466,14 @@
       <div class="glass-panel rounded-2xl overflow-hidden group flex flex-col border-white/10">
         <div class="p-6 flex-1 flex flex-col">
           <div class="flex justify-between items-start mb-2">
-            <h3 class="font-body-lg text-body-lg font-bold text-on-background line-clamp-2 leading-tight text-on-background">${f.item_name}</h3>
+            <h3 class="font-body-lg text-body-lg font-bold text-on-background line-clamp-2 leading-tight text-on-background${f.purchased_at ? ' line-through opacity-60' : ''}">${f.item_name}</h3>
             <button class="ml-2 w-9 h-9 rounded-full bg-surface-container/50 border border-glass-stroke flex items-center justify-center text-primary hover:bg-primary/20 transition-colors shrink-0" onclick="removeFavourite(${f.id})" title="Remove from favourites">
               <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
             </button>
           </div>
           <p class="font-body-md text-body-md text-on-surface-variant text-sm mb-2">${f.store_name || 'Unknown store'}${f.price ? ' &middot; ' + formatZAR(f.price) : ''}</p>
           <div class="mt-auto pt-4 border-t border-glass-stroke flex items-center justify-between">
-            <span class="text-on-surface-variant font-label-sm text-label-sm">Saved ${new Date(f.created_at).toLocaleDateString()}</span>
+            <span class="${f.purchased_at ? 'text-primary' : 'text-on-surface-variant'} font-label-sm text-label-sm">${f.purchased_at ? 'Purchased ' + new Date(f.purchased_at).toLocaleDateString() : 'Saved ' + new Date(f.created_at).toLocaleDateString()}</span>
             ${f.link ? `<a class="text-primary font-label-lg text-label-lg hover:underline decoration-primary underline-offset-4" href="${f.link}" target="_blank">View Deal</a>` : ''}
           </div>
         </div>
@@ -465,15 +481,21 @@
     `).join('');
   }
 
-  async function loadFavourites() {
-    const resp = await fetch('/api/favourites');
-    const favs = await resp.json();
-    renderFavourites(favs);
+  function loadFavourites() {
+    return loadWithCache('/api/favourites', {
+      render: favs => renderFavourites(favs),
+      onError: err => { document.getElementById('favouritesContainer').innerHTML = '<p class="text-error font-body-md col-span-2">Favourites could not be loaded. Refresh to try again.</p>'; },
+    });
   }
 
   async function removeFavourite(id) {
-    await fetch('/api/favourites/' + id, { method: 'DELETE' });
-    loadFavourites();
+    try {
+      await apiSend('DELETE', '/api/favourites/' + id);
+      showToast('Removed from favourites');
+      loadFavourites();
+    } catch (err) {
+      showToast("Couldn't remove: " + err.message, { error: true });
+    }
   }
 
   function renderBudgetLog(entries) {
@@ -493,30 +515,40 @@
     `).join('');
   }
 
-  async function loadBudgetLog() {
-    const resp = await fetch('/api/budget');
-    const data = await resp.json();
-    renderBudgetLog(data.entries);
+  function loadBudgetLog() {
+    return loadWithCache('/api/budget', {
+      render: data => renderBudgetLog(data.entries),
+      onError: () => { document.getElementById('budgetLogList').innerHTML = '<p class="text-error font-body-md text-sm pt-2">Purchases could not be loaded. Refresh to try again.</p>'; },
+    });
   }
 
   async function logSpend() {
     const amount = document.getElementById('logAmount').value;
     const category = document.getElementById('logCategory').value;
     const description = document.getElementById('logDescription').value.trim();
-    if (!amount) return alert('Enter an amount');
-    await fetch('/api/budget', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, category, description }),
-    });
-    document.getElementById('logAmount').value = '';
-    document.getElementById('logDescription').value = '';
-    loadBudgetLog();
+    if (!amount || Number(amount) <= 0) {
+      showToast('Enter the amount you spent', { error: true });
+      return document.getElementById('logAmount').focus();
+    }
+    try {
+      await apiSend('POST', '/api/budget', { amount, category, description });
+      document.getElementById('logAmount').value = '';
+      document.getElementById('logDescription').value = '';
+      showToast('Logged ' + formatZAR(amount) + ' under ' + category);
+      loadBudgetLog();
+    } catch (err) {
+      showToast("Couldn't log that: " + err.message, { error: true });
+    }
   }
 
   async function deleteBudgetEntry(id) {
-    await fetch('/api/budget/' + id, { method: 'DELETE' });
-    loadBudgetLog();
+    try {
+      await apiSend('DELETE', '/api/budget/' + id);
+      showToast('Purchase removed');
+      loadBudgetLog();
+    } catch (err) {
+      showToast("Couldn't remove: " + err.message, { error: true });
+    }
   }
 
   document.getElementById('logSpendBtn').addEventListener('click', logSpend);
@@ -528,12 +560,13 @@
   document.getElementById('saveBudgetBtn').addEventListener('click', async () => {
     const monthlyBudget = document.getElementById('newBudgetInput').value;
     if (!monthlyBudget) return;
-    const resp = await fetch('/api/auth/profile', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ monthlyBudget }),
-    });
-    const updated = await resp.json();
+    let updated;
+    try {
+      updated = (await apiSend('PUT', '/api/auth/profile', { monthlyBudget })).data;
+      showToast('Saved');
+    } catch (err) {
+      return showToast("Couldn't save: " + err.message, { error: true });
+    }
     document.getElementById('currentBudgetLabel').textContent = formatZAR(updated.monthlyBudget) + ' / month';
     document.getElementById('budgetSettingForm').classList.add('hidden');
   });
@@ -544,12 +577,13 @@
   document.getElementById('saveTargetBtn').addEventListener('click', async () => {
     const spendingTarget = document.getElementById('newTargetInput').value;
     if (!spendingTarget) return;
-    const resp = await fetch('/api/auth/profile', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ spendingTarget }),
-    });
-    const updated = await resp.json();
+    let updated;
+    try {
+      updated = (await apiSend('PUT', '/api/auth/profile', { spendingTarget })).data;
+      showToast('Saved');
+    } catch (err) {
+      return showToast("Couldn't save: " + err.message, { error: true });
+    }
     document.getElementById('currentTargetLabel').textContent = formatZAR(updated.spendingTarget) + ' target';
     document.getElementById('targetSettingForm').classList.add('hidden');
   });

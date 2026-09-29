@@ -6,7 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "refresh-deals": "node scripts/refresh-deals.js"
+    "refresh-deals": "node scripts/refresh-deals.js",
+    "test": "node --test",
+    "test:integration": "node --env-file=.env integration/checkout.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",

@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduBudget AI - Smart Basket</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e2e2e2",
+                        "primary-fixed": "#ffdcc3",
+                        "on-tertiary": "#00344c",
+                        "surface-container-lowest": "#141416",
+                        "surface-tint": "#ffb77d",
+                        "on-tertiary-fixed": "#001e2e",
+                        "surface-dim": "#17171A",
+                        "outline-variant": "#564334",
+                        "surface-container-low": "#1b1b1b",
+                        "on-primary": "#4d2600",
+                        "on-tertiary-fixed-variant": "#004c6c",
+                        "on-error": "#690005",
+                        "surface-variant": "#353535",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "primary": "#ffb77d",
+                        "glass-stroke": "rgba(255, 255, 255, 0.15)",
+                        "on-error-container": "#ffdad6",
+                        "background": "#1C1C1E",
+                        "on-tertiary-container": "#004360",
+                        "surface-container": "#1f1f1f",
+                        "tertiary-fixed-dim": "#85cfff",
+                        "error": "#ffb4ab",
+                        "on-primary-container": "#623200",
+                        "secondary-fixed": "#e2e2e2",
+                        "primary-fixed-dim": "#ffb77d",
+                        "accent-glow": "rgba(255, 140, 0, 0.2)",
+                        "primary-container": "#ff8c00",
+                        "inverse-primary": "#904d00",
+                        "inverse-surface": "#e2e2e2",
+                        "tertiary-container": "#00b5fc",
+                        "error-container": "#93000a",
+                        "on-surface-variant": "#ddc1ae",
+                        "surface-bright": "#393939",
+                        "secondary-container": "#454747",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-secondary": "#2f3131",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "surface-container-highest": "#353535",
+                        "glass-surface": "rgba(255, 255, 255, 0.05)",
+                        "surface-container-high": "#2a2a2a",
+                        "surface": "#1C1C1E",
+                        "tertiary-fixed": "#c7e7ff",
+                        "secondary": "#c6c6c7",
+                        "tertiary": "#85cfff",
+                        "on-primary-fixed-variant": "#6e3900",
+                        "on-secondary-container": "#b4b5b5",
+                        "on-surface": "#e2e2e2",
+                        "on-primary-fixed": "#2f1500",
+                        "outline": "#a48c7a",
+                        "inverse-on-surface": "#303030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "unit": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-padding": "32px",
+                        "safe": "env(safe-area-inset-bottom)"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-md": ["Plus Jakarta Sans", "sans-serif"],
+                        "label-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-xl": ["Plus Jakarta Sans", "sans-serif"],
+                        "label-sm": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #1C1C1E;
+            color: #e2e2e2;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .glow-accent {
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.2);
+        }
+
+        .glass-input:focus {
+            border-color: #ffb77d;
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.2);
+            outline: none;
+        }
+    </style>
+<style>
+        /* Smart Basket card stack */
+        .sb-deck { position: relative; height: 600px; }
+        .sb-card {
+            position: absolute; inset: 0; background-color: #1f1f1f;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            will-change: transform;
+        }
+        .sb-card.sb-top { touch-action: none; cursor: grab; }
+        .sb-card.sb-dragging { transition: none; cursor: grabbing; }
+        .sb-card.sb-behind-1 { transform: translateY(12px) scale(0.96); opacity: 0.7; pointer-events: none; }
+        .sb-card.sb-behind-2 { transform: translateY(24px) scale(0.92); opacity: 0.4; pointer-events: none; }
+        .sb-stamp {
+            position: absolute; top: 24px; padding: 6px 14px; border-radius: 12px;
+            font-weight: 700; letter-spacing: 0.08em; border: 2px solid currentColor;
+            opacity: 0; pointer-events: none; z-index: 20; background: rgba(28,28,30,0.85);
+        }
+        .sb-stamp-add { left: 20px; color: #7ddc8f; transform: rotate(-12deg); }
+        .sb-stamp-skip { right: 20px; color: #ffb77d; transform: rotate(12deg); }
+        .sb-stamp-hide { left: 50%; top: auto; bottom: 40%; transform: translateX(-50%); color: #ffb4ab; }
+        .sb-action:focus-visible, .sb-deck:focus-visible, .sb-focusable:focus-visible {
+            outline: 2px solid #ffb77d; outline-offset: 3px;
+        }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+        @media (max-width: 767px) { .sb-deck { height: 500px; } }
+        @media (prefers-reduced-motion: reduce) {
+            .sb-card { transition: none !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-24 md:pb-0 flex">
+<!-- Desktop Sidebar -->
+<aside class="hidden md:flex flex-col w-64 border-r border-glass-stroke bg-surface-container-lowest/80 backdrop-blur-3xl sticky top-0 h-screen p-6 z-40">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface mb-10 pl-2">EduBudget AI</h1>
+<nav class="flex-1 space-y-4">
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+<span class="font-label-lg">Bank</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/search.html">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-lg">Shop</span>
+</a>
+<a aria-current="page" class="flex items-center gap-4 bg-primary-container/20 text-on-surface p-3 rounded-xl shadow-[0_0_15px_rgba(255,140,0,0.3)] transition-transform" href="/basket.html">
+<span class="material-symbols-outlined" data-icon="shopping_basket" style="font-variation-settings: 'FILL' 1;">shopping_basket</span>
+<span class="font-label-lg">Basket</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/favourites.html">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="font-label-lg">Favourites</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/analytics.html">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-label-lg">Budget</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/favorites.html">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-lg">Profile</span>
+</a>
+</nav>
+</aside>
+<div class="flex-1 flex flex-col min-w-0">
+<!-- TopAppBar -->
+<header class="bg-glass-surface text-primary sticky top-0 backdrop-blur-3xl border-b border-glass-stroke flex justify-between items-center w-full px-margin-mobile h-16 z-50 md:px-margin-desktop md:justify-end">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface md:hidden">EduBudget AI</h1>
+<div class="flex items-center gap-4">
+<a class="w-8 h-8 rounded-full overflow-hidden border border-glass-stroke flex items-center justify-center text-on-surface" href="/favorites.html" aria-label="Profile">
+<span class="material-symbols-outlined">person</span>
+</a>
+</div>
+</header>
+<main class="max-w-7xl w-full mx-auto px-margin-mobile md:px-margin-desktop py-gutter flex-1">
+<nav aria-label="Basket sections" class="flex gap-2 mb-5">
+<a class="px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-surface font-label-lg hover:bg-white/5 sb-focusable" href="/basket.html">My basket</a>
+<a aria-current="page" class="px-4 py-2 rounded-full bg-primary-container/20 border border-primary/30 text-primary font-label-lg sb-focusable" href="/smart-basket.html">Smart suggestions</a>
+</nav>
+<div class="mb-6">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-surface">Smart Basket</h2>
+<p class="font-body-md text-on-surface-variant mt-1 text-sm md:text-base" id="basketIntro">Suggestions based on what you buy and search for, with the cheapest price we can find.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter items-start">
+<!-- Card stack -->
+<section class="md:col-span-7 flex flex-col items-center" aria-labelledby="deckHeading">
+<h3 class="sr-only" id="deckHeading">Suggested products</h3>
+<div class="sb-deck w-full max-w-sm sb-focusable rounded-3xl" id="deck" tabindex="0" aria-describedby="deckHelp">
+<div class="glass-panel rounded-3xl h-full flex items-center justify-center p-8 text-center">
+<p class="text-on-surface-variant">Building your Smart Basket...</p>
+</div>
+</div>
+<p class="sr-only" id="deckHelp">Use the Skip, Hide and Add buttons, or press Left arrow to skip, Up arrow to hide, Right arrow to add.</p>
+<!-- Action buttons: always visible for desktop, keyboard and screen reader users -->
+<div class="flex items-center justify-center gap-6 mt-8" id="deckActions">
+<div class="flex flex-col items-center gap-1">
+<button class="sb-action w-14 h-14 rounded-full glass-panel flex items-center justify-center text-primary hover:bg-white/10 active:scale-90 transition-transform disabled:opacity-40" id="skipBtn" type="button" aria-label="Skip for now">
+<span class="material-symbols-outlined">close</span>
+</button>
+<span class="font-label-sm text-on-surface-variant" aria-hidden="true">Skip</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<button class="sb-action w-12 h-12 rounded-full glass-panel flex items-center justify-center text-error hover:bg-white/10 active:scale-90 transition-transform disabled:opacity-40" id="hideBtn" type="button" aria-label="Don't suggest this again">
+<span class="material-symbols-outlined">visibility_off</span>
+</button>
+<span class="font-label-sm text-on-surface-variant" aria-hidden="true">Hide</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<button class="sb-action w-16 h-16 rounded-full bg-primary text-on-primary flex items-center justify-center glow-accent hover:bg-surface-tint active:scale-90 transition-transform disabled:opacity-40" id="addBtn" type="button" aria-label="Add to grocery list">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_shopping_cart</span>
+</button>
+<span class="font-label-sm text-on-surface-variant" aria-hidden="true">Add</span>
+</div>
+</div>
+<p class="font-label-sm text-on-surface-variant mt-4 text-center hidden md:block" aria-hidden="true">Swipe or use ← skip · ↑ hide · → add</p>
+<p class="font-label-sm text-on-surface-variant mt-4 text-center md:hidden" aria-hidden="true">Swipe right to add · left to skip · up to hide</p>
+</section>
+<!-- Grocery list + hidden items -->
+<aside class="md:col-span-5 flex flex-col gap-gutter">
+<section class="glass-panel rounded-2xl p-6" aria-labelledby="listHeading">
+<div class="flex items-baseline justify-between mb-4">
+<h3 class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface" id="listHeading">My Basket</h3>
+<span class="font-label-sm text-on-surface-variant" id="listTotal"></span>
+</div>
+<form class="flex gap-2 mb-4" id="manualAddForm">
+<label class="sr-only" for="manualItemInput">Add an item to your grocery list</label>
+<input class="glass-input flex-1 min-w-0 rounded-xl px-3 py-2 bg-white/5 border border-glass-stroke text-on-surface" id="manualItemInput" maxlength="120" placeholder="Add an item, e.g. Rice" type="text"/>
+<button class="px-4 py-2 rounded-xl bg-primary text-on-primary font-label-sm" type="submit">Add</button>
+</form>
+<a class="block mb-3 text-primary font-label-lg hover:underline sb-focusable rounded" href="/basket.html">Open basket to change quantities or confirm a purchase</a>
+<ul class="flex flex-col" id="groceryList">
+<li class="text-on-surface-variant font-body-md text-sm">Loading...</li>
+</ul>
+</section>
+<details class="glass-panel rounded-2xl p-6" id="hiddenPanel">
+<summary class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface cursor-pointer sb-focusable rounded">Hidden from Smart Basket <span id="hiddenCount"></span></summary>
+<ul class="flex flex-col mt-4" id="hiddenList"></ul>
+</details>
+</aside>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden bg-glass-surface text-primary font-label-sm text-label-sm fixed bottom-0 w-full rounded-t-xl backdrop-blur-3xl border-t border-glass-stroke left-0 z-50 flex justify-around items-center px-2 py-2 pb-safe bg-surface-container-lowest">
+<button class="flex flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/dashboard.html'">
+<span class="material-symbols-outlined mb-1" data-icon="account_balance">account_balance</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Bank</span>
+</button>
+<button class="flex flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/search.html'">
+<span class="material-symbols-outlined mb-1" data-icon="shopping_bag">shopping_bag</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Shop</span>
+</button>
+<button aria-current="page" class="flex flex-col items-center justify-center bg-primary-container/20 rounded-xl py-2 px-0 shadow-[0_0_15px_rgba(255,140,0,0.3)] active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/basket.html'">
+<span class="material-symbols-outlined mb-1" data-icon="shopping_basket" style="font-variation-settings: 'FILL' 1;">shopping_basket</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Basket</span>
+</button>
+<button class="flex flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/favourites.html'">
+<span class="material-symbols-outlined mb-1" data-icon="favorite">favorite</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Favourites</span>
+</button>
+<button class="flex flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/analytics.html'">
+<span class="material-symbols-outlined mb-1" data-icon="insights">insights</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Budget</span>
+</button>
+<button class="flex flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/favorites.html'">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Profile</span>
+</button>
+</nav>
+<script src="/shared.js"></script>
+<script>
+  // All product/store text is inserted with textContent (never innerHTML),
+  // since it comes from third-party listings.
+  const SWIPE_THRESHOLD = 90;
+  const SOURCE_LABELS = { personal: 'For you', popular: 'Popular', staple: 'Staple' };
+  let deck = [];            // remaining suggestions; deck[0] is the top card
+  let remainingBudget = null;
+  let busy = false;
+  let skipCooldownDays = 3;
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+  function icon(name, extra) {
+    return el('span', 'material-symbols-outlined' + (extra ? ' ' + extra : ''), name);
+  }
+  function safeLink(url) {
+    return typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null;
+  }
+  function capitalise(text) {
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+  }
+  function timeAgo(value) {
+    const then = new Date(value).getTime();
+    if (!then) return '';
+    const mins = Math.round((Date.now() - then) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + ' min ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + ' h ago';
+    return Math.round(hrs / 24) + ' d ago';
+  }
+  const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Uses the app-wide toast from shared.js.
+  function toast(message, isError) {
+    showToast(message, { error: !!isError });
+  }
+
+  // Changes go through apiSend (shared.js) so cached lists refresh; reads
+  // stay live because Smart Basket prices and suggestions change often.
+  async function api(method, url, body) {
+    if (method !== 'GET') return apiSend(method, url, body);
+    const resp = await fetch(url, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (resp.status === 401) { window.location.href = '/login.html'; throw new Error('Not signed in'); }
+    const data = resp.status === 204 ? null : await resp.json().catch(() => null);
+    if (!resp.ok) throw new Error((data && (data.error || data.detail)) || 'Request failed');
+    return { status: resp.status, data };
+  }
+
+  // ---------- Card rendering ----------
+  function priceBlock(s) {
+    const box = el('div', 'flex flex-col gap-1');
+    if (s.priceStatus === 'checking') {
+      box.appendChild(el('p', 'font-body-md text-on-surface-variant', 'Checking current prices...'));
+      return box;
+    }
+    const p = s.price;
+    if (!p) {
+      const messages = {
+        not_checked: 'Price not checked yet.',
+        no_match: 'No South African retailer price found for this item.',
+        error: "Couldn't check prices right now - try again later.",
+      };
+      box.appendChild(el('p', 'font-body-md text-on-surface-variant', messages[s.priceStatus] || 'No price available.'));
+      return box;
+    }
+    const row = el('div', 'flex items-baseline gap-2 flex-wrap');
+    row.appendChild(el('span', 'font-headline-lg-mobile text-headline-lg-mobile text-primary', formatZAR(p.price)));
+    row.appendChild(el('span', 'font-body-md text-on-surface', 'at ' + (p.store || 'unknown store')));
+    box.appendChild(row);
+
+    if (p.kind === 'special') {
+      const bits = ['Store special'];
+      if (p.wasPrice != null) bits.push('was ' + formatZAR(p.wasPrice));
+      if (p.endsOn) bits.push('ends ' + p.endsOn);
+      box.appendChild(el('p', 'font-label-sm text-tertiary', bits.join(' · ')));
+    }
+    let compare;
+    if (p.nextCheapest && p.savingVsNext > 0) {
+      compare = formatZAR(p.savingVsNext) + ' cheaper than ' + p.nextCheapest.store + ' (' + formatZAR(p.nextCheapest.price) + ')';
+    } else if (p.nextCheapest) {
+      compare = 'Same price at ' + p.nextCheapest.store;
+    } else {
+      compare = 'Only ' + (p.store || 'one store') + ' had a matching price';
+    }
+    box.appendChild(el('p', 'font-label-sm text-on-surface', compare + ' · ' + p.storesCompared + ' SA retailer' + (p.storesCompared === 1 ? '' : 's') + ' compared'));
+    if (remainingBudget != null) {
+      const left = remainingBudget - p.price;
+      box.appendChild(el('p', 'font-label-sm ' + (left < 0 ? 'text-error' : 'text-on-surface-variant'),
+        left < 0 ? 'More than your remaining ' + formatZAR(remainingBudget)
+                 : 'Leaves ' + formatZAR(left) + ' of your remaining budget'));
+    }
+    if (s.priceCheckedAt) box.appendChild(el('p', 'font-label-sm text-on-surface-variant', 'Price checked ' + timeAgo(s.priceCheckedAt)));
+    return box;
+  }
+
+  function buildCard(s, position) {
+    const card = el('article', 'sb-card glass-panel rounded-3xl overflow-hidden flex flex-col');
+    if (position === 0) card.classList.add('sb-top');
+    if (position === 1) card.classList.add('sb-behind-1');
+    if (position === 2) card.classList.add('sb-behind-2');
+    if (position === 0) card.setAttribute('aria-label', capitalise(s.name));
+    else card.setAttribute('aria-hidden', 'true');
+
+    const media = el('div', 'relative h-24 md:h-36 bg-surface-container-high flex items-center justify-center shrink-0');
+    const thumb = s.price && safeLink(s.price.thumbnail);
+    if (thumb) {
+      const img = el('img', 'w-full h-full object-cover');
+      img.src = thumb;
+      img.alt = s.price.title || s.name;
+      img.draggable = false;
+      img.addEventListener('error', () => { img.remove(); media.prepend(icon('shopping_basket', 'text-6xl text-on-surface-variant')); });
+      media.appendChild(img);
+    } else {
+      media.appendChild(icon('shopping_basket', 'text-6xl text-on-surface-variant'));
+    }
+    media.appendChild(el('span', 'absolute top-3 left-3 bg-surface/80 border border-glass-stroke text-on-surface font-label-sm px-3 py-1 rounded-full', SOURCE_LABELS[s.source] || 'Suggested'));
+    if (s.price && s.price.size) {
+      media.appendChild(el('span', 'absolute top-3 right-3 bg-primary text-on-primary font-label-sm px-3 py-1 rounded-full glow-accent', s.price.size));
+    }
+    card.appendChild(media);
+
+    const body = el('div', 'p-4 md:p-5 flex flex-col gap-2 md:gap-3 flex-1 min-h-0 overflow-y-auto');
+    const titleWrap = el('div');
+    titleWrap.appendChild(el('h4', 'font-body-lg text-body-lg font-bold text-on-surface', capitalise(s.name)));
+    if (s.price && s.price.title) titleWrap.appendChild(el('p', 'font-label-sm text-on-surface-variant line-clamp-2 mt-1', s.price.title));
+    body.appendChild(titleWrap);
+    body.appendChild(priceBlock(s));
+
+    const why = el('ul', 'flex flex-col gap-1 pt-3 border-t border-glass-stroke');
+    why.setAttribute('aria-label', 'Why this was suggested');
+    (s.reasons || []).forEach(r => {
+      const li = el('li', 'flex items-center gap-2 font-label-sm text-on-surface-variant');
+      li.appendChild(icon('auto_awesome', 'text-[16px] text-primary'));
+      li.appendChild(el('span', '', r));
+      why.appendChild(li);
+    });
+    body.appendChild(why);
+
+    const link = s.price && safeLink(s.price.link);
+    if (link) {
+      const a = el('a', 'text-primary font-label-lg hover:underline sb-focusable rounded self-start', 'View listing');
+      a.href = link;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      body.appendChild(a);
+    }
+    card.appendChild(body);
+
+    const stampText = { add: 'ADD', skip: 'SKIP', hide: 'HIDE' };
+    Object.keys(stampText).forEach(kind => {
+      const stamp = el('span', 'sb-stamp sb-stamp-' + kind, stampText[kind]);
+      stamp.setAttribute('aria-hidden', 'true');
+      card.appendChild(stamp);
+    });
+    if (position === 0) attachSwipe(card);
+    return card;
+  }
+
+  function setActionsDisabled(disabled) {
+    ['skipBtn', 'hideBtn', 'addBtn'].forEach(id => { document.getElementById(id).disabled = disabled; });
+  }
+
+  function renderDeck() {
+    const container = document.getElementById('deck');
+    container.textContent = '';
+    setActionsDisabled(deck.length === 0);
+
+    if (deck.length === 0) {
+      const empty = el('div', 'glass-panel rounded-3xl h-full flex flex-col items-center justify-center gap-4 p-8 text-center');
+      empty.appendChild(icon('task_alt', 'text-5xl text-primary'));
+      empty.appendChild(el('p', 'font-body-lg text-on-surface font-bold', "You're all caught up"));
+      empty.appendChild(el('p', 'font-body-md text-on-surface-variant', 'Search the Shop or log purchases and your Smart Basket will learn what you need.'));
+      const row = el('div', 'flex gap-3');
+      const shop = el('a', 'px-4 py-2 rounded-xl border border-glass-stroke text-primary font-label-lg sb-focusable', 'Go to Shop');
+      shop.href = '/search.html';
+      const refresh = el('button', 'px-4 py-2 rounded-xl bg-primary text-on-primary font-label-lg sb-focusable', 'Refresh');
+      refresh.type = 'button';
+      refresh.addEventListener('click', loadSuggestions);
+      row.appendChild(shop);
+      row.appendChild(refresh);
+      empty.appendChild(row);
+      container.appendChild(empty);
+      return;
+    }
+    // Paint back-to-front so the top card ends up on top.
+    deck.slice(0, 3).map((s, i) => buildCard(s, i)).reverse().forEach(c => container.appendChild(c));
+    ensureTopPriced();
+  }
+
+  // Cards the first load didn't have API quota to price are checked when
+  // they reach the top of the stack.
+  async function ensureTopPriced() {
+    const s = deck[0];
+    if (!s || s.priceStatus !== 'not_checked') return;
+    s.priceStatus = 'checking';
+    renderDeck();
+    try {
+      const { data } = await api('GET', '/api/smart-basket/price?item=' + encodeURIComponent(s.name));
+      Object.assign(s, data);
+    } catch (e) {
+      s.priceStatus = 'error';
+    }
+    if (deck[0] === s && !busy) renderDeck();
+  }
+
+  // ---------- Swipe gestures (touch, pen and mouse via pointer events) ----------
+  function attachSwipe(card) {
+    let startX = 0, startY = 0, dx = 0, dy = 0, dragging = false;
+    const stamps = {
+      add: card.querySelector('.sb-stamp-add'),
+      skip: card.querySelector('.sb-stamp-skip'),
+      hide: card.querySelector('.sb-stamp-hide'),
+    };
+    const clamp01 = v => Math.max(0, Math.min(1, v));
+    const directionFor = (x, y) => {
+      if (-y > SWIPE_THRESHOLD && Math.abs(y) > Math.abs(x)) return 'hide';
+      if (x > SWIPE_THRESHOLD) return 'add';
+      if (x < -SWIPE_THRESHOLD) return 'skip';
+      return null;
+    };
+    card.addEventListener('pointerdown', e => {
+      if (busy || e.button > 0 || e.target.closest('a')) return;
+      dragging = true;
+      startX = e.clientX; startY = e.clientY; dx = dy = 0;
+      card.setPointerCapture(e.pointerId);
+      card.classList.add('sb-dragging');
+    });
+    card.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      dx = e.clientX - startX;
+      dy = e.clientY - startY;
+      card.style.transform = `translate(${dx}px, ${Math.min(dy, 40)}px) rotate(${dx * 0.05}deg)`;
+      const vertical = Math.abs(dy) > Math.abs(dx);
+      stamps.add.style.opacity = vertical ? 0 : clamp01(dx / SWIPE_THRESHOLD);
+      stamps.skip.style.opacity = vertical ? 0 : clamp01(-dx / SWIPE_THRESHOLD);
+      stamps.hide.style.opacity = vertical ? clamp01(-dy / SWIPE_THRESHOLD) : 0;
+    });
+    const end = () => {
+      if (!dragging) return;
+      dragging = false;
+      card.classList.remove('sb-dragging');
+      const dir = directionFor(dx, dy);
+      if (dir) {
+        act(dir);
+      } else {
+        card.style.transform = '';
+        Object.values(stamps).forEach(s => { s.style.opacity = 0; });
+      }
+    };
+    card.addEventListener('pointerup', end);
+    card.addEventListener('pointercancel', end);
+  }
+
+  // ---------- Actions ----------
+  const FLY_OUT = {
+    add: 'translate(150%, 0) rotate(20deg)',
+    skip: 'translate(-150%, 0) rotate(-20deg)',
+    hide: 'translate(0, -150%)',
+  };
+
+  async function act(direction) {
+    const s = deck[0];
+    if (busy || !s) return;
+    busy = true;
+    setActionsDisabled(true);
+    const card = document.querySelector('#deck .sb-top');
+    if (card) {
+      card.querySelector('.sb-stamp-' + direction).style.opacity = 1;
+      card.style.transform = FLY_OUT[direction];
+      card.style.opacity = '0';
+    }
+    const name = capitalise(s.name);
+    try {
+      let message;
+      if (direction === 'add') {
+        const p = s.price;
+        const { data } = await api('POST', '/api/grocery-list', {
+          itemName: name,
+          productTitle: p ? p.title : null,
+          storeName: p ? p.store : null,
+          supplierId: p ? p.supplierId : null,
+          price: p ? p.price : null,
+          link: p ? p.link : null,
+          thumbnail: p ? p.thumbnail : null,
+          addedFrom: 'smart_basket',
+        });
+        message = data.alreadyExisted
+          ? name + ' is already on your grocery list' + (p ? ' - price updated to ' + formatZAR(p.price) : '')
+          : 'Added ' + name + ' to your grocery list';
+        loadGroceryList();
+      } else if (direction === 'skip') {
+        await api('POST', '/api/smart-basket/skip', { itemKey: s.itemKey, itemName: name });
+        message = 'Skipped ' + name + ' for ' + skipCooldownDays + ' days';
+      } else {
+        await api('POST', '/api/smart-basket/hide', { itemKey: s.itemKey, itemName: name });
+        message = name + " won't be suggested again. You can restore it under Hidden.";
+        loadHidden();
+      }
+      await new Promise(r => setTimeout(r, reducedMotion() ? 0 : 250));
+      deck.shift();
+      busy = false;
+      renderDeck();
+      toast(message);
+    } catch (err) {
+      busy = false;
+      renderDeck(); // put the card back
+      toast("Couldn't save that: " + err.message, true);
+    } finally {
+      busy = false;
+      if (deck.length) document.getElementById('deck').focus({ preventScroll: true });
+    }
+  }
+
+  document.getElementById('addBtn').addEventListener('click', () => act('add'));
+  document.getElementById('skipBtn').addEventListener('click', () => act('skip'));
+  document.getElementById('hideBtn').addEventListener('click', () => act('hide'));
+  document.getElementById('deck').addEventListener('keydown', e => {
+    const dir = { ArrowRight: 'add', ArrowLeft: 'skip', ArrowUp: 'hide' }[e.key];
+    if (!dir) return;
+    e.preventDefault();
+    act(dir);
+  });
+
+  // ---------- Loading ----------
+  async function loadSuggestions() {
+    const container = document.getElementById('deck');
+    container.textContent = '';
+    const loading = el('div', 'glass-panel rounded-3xl h-full flex items-center justify-center p-8 text-center');
+    loading.appendChild(el('p', 'text-on-surface-variant', 'Building your Smart Basket...'));
+    container.appendChild(loading);
+    setActionsDisabled(true);
+    try {
+      const { data } = await api('GET', '/api/smart-basket');
+      deck = data.suggestions || [];
+      remainingBudget = data.remainingBudget;
+      skipCooldownDays = data.skipCooldownDays || skipCooldownDays;
+      document.getElementById('basketIntro').textContent = data.personalised
+        ? 'Suggestions based on what you buy and search for, with the cheapest price we can find.'
+        : "We don't know your shopping habits yet, so here are popular student picks. Search the Shop and log purchases to personalise this.";
+      renderDeck();
+    } catch (err) {
+      container.textContent = '';
+      const box = el('div', 'glass-panel rounded-3xl h-full flex flex-col items-center justify-center gap-4 p-8 text-center');
+      box.appendChild(el('p', 'text-error', 'Error: ' + err.message));
+      const retry = el('button', 'px-4 py-2 rounded-xl bg-primary text-on-primary font-label-lg sb-focusable', 'Try again');
+      retry.type = 'button';
+      retry.addEventListener('click', loadSuggestions);
+      box.appendChild(retry);
+      container.appendChild(box);
+    }
+  }
+
+  // ---------- Grocery list ----------
+  function renderGroceryList(items) {
+    const list = document.getElementById('groceryList');
+    list.textContent = '';
+    const active = items.filter(i => !i.purchased_at);
+    const bought = items.filter(i => i.purchased_at).slice(0, 5);
+    const priced = active.filter(i => i.price != null);
+    const total = priced.reduce((sum, i) => sum + Number(i.price), 0);
+    document.getElementById('listTotal').textContent = active.length
+      ? active.length + (active.length === 1 ? ' item' : ' items') + (priced.length ? ' · ~' + formatZAR(total) : '')
+      : '';
+
+    if (active.length === 0) {
+      list.appendChild(el('li', 'text-on-surface-variant font-body-md text-sm py-2', 'Your list is empty - swipe right on a suggestion or add an item above.'));
+    }
+    active.forEach(i => list.appendChild(groceryRow(i, false)));
+    if (bought.length) {
+      list.appendChild(el('li', 'font-label-sm text-on-surface-variant uppercase tracking-wider pt-4 pb-1', 'Recently bought'));
+      bought.forEach(i => list.appendChild(groceryRow(i, true)));
+    }
+  }
+
+  function groceryRow(item, bought) {
+    const li = el('li', 'flex items-center gap-3 py-2 border-b border-glass-stroke/50 last:border-b-0');
+    const label = el('div', 'flex-1 min-w-0');
+    label.appendChild(el('span', 'block text-on-surface font-body-md' + (bought ? ' line-through opacity-60' : ''),
+      (Number(item.quantity) > 1 ? item.quantity + ' x ' : '') + item.item_name));
+    const detail = [];
+    if (item.price != null) detail.push(formatZAR(item.price));
+    if (item.store_name) detail.push(item.store_name);
+    if (detail.length) label.appendChild(el('span', 'block text-on-surface-variant text-xs', detail.join(' at ')));
+    li.appendChild(label);
+    if (!bought) {
+      const remove = el('button', 'text-on-surface-variant hover:text-error w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 shrink-0 sb-focusable');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', 'Remove ' + item.item_name + ' from basket');
+      remove.appendChild(icon('delete', 'text-[18px]'));
+      remove.addEventListener('click', () => removeItem(item));
+      li.appendChild(remove);
+    }
+    return li;
+  }
+
+  async function loadGroceryList() {
+    try {
+      const { data } = await api('GET', '/api/grocery-list');
+      renderGroceryList(data || []);
+    } catch (err) {
+      const list = document.getElementById('groceryList');
+      list.textContent = '';
+      list.appendChild(el('li', 'text-error text-sm', 'Error: ' + err.message));
+    }
+  }
+
+  async function removeItem(item) {
+    try {
+      await api('DELETE', '/api/grocery-list/' + item.id);
+      toast('Removed ' + item.item_name);
+      loadGroceryList();
+    } catch (err) {
+      toast("Couldn't remove: " + err.message, true);
+    }
+  }
+
+  document.getElementById('manualAddForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const input = document.getElementById('manualItemInput');
+    const itemName = input.value.trim();
+    if (!itemName) return;
+    try {
+      const { data } = await api('POST', '/api/grocery-list', { itemName, addedFrom: 'manual' });
+      const savedName = (data.item && data.item.item_name) || itemName;
+      toast(data.alreadyExisted ? savedName + ' is already on your list' : 'Added ' + savedName);
+      input.value = '';
+      loadGroceryList();
+      // No need to keep suggesting something that's now on the list.
+      const key = data.item && data.item.item_key;
+      if (key && deck.some(s => s.itemKey === key)) {
+        deck = deck.filter(s => s.itemKey !== key);
+        renderDeck();
+      }
+    } catch (err) {
+      toast("Couldn't add: " + err.message, true);
+    }
+  });
+
+  // ---------- Hidden items ----------
+  async function loadHidden() {
+    const list = document.getElementById('hiddenList');
+    try {
+      const { data } = await api('GET', '/api/smart-basket/hidden');
+      document.getElementById('hiddenCount').textContent = '(' + data.length + ')';
+      list.textContent = '';
+      if (data.length === 0) {
+        list.appendChild(el('li', 'text-on-surface-variant text-sm', 'Nothing hidden. Swipe up on a suggestion to stop seeing it.'));
+        return;
+      }
+      data.forEach(h => {
+        const li = el('li', 'flex items-center justify-between gap-3 py-2');
+        li.appendChild(el('span', 'text-on-surface font-body-md', h.item_name));
+        const restore = el('button', 'text-primary font-label-sm hover:underline sb-focusable rounded', 'Restore');
+        restore.type = 'button';
+        restore.setAttribute('aria-label', 'Restore ' + h.item_name + ' to Smart Basket');
+        restore.addEventListener('click', async () => {
+          try {
+            await api('DELETE', '/api/smart-basket/hidden/' + encodeURIComponent(h.item_key));
+            toast(h.item_name + ' can be suggested again');
+            loadHidden();
+          } catch (err) {
+            toast("Couldn't restore: " + err.message, true);
+          }
+        });
+        li.appendChild(restore);
+        list.appendChild(li);
+      });
+    } catch (err) {
+      list.textContent = '';
+      list.appendChild(el('li', 'text-error text-sm', 'Error: ' + err.message));
+    }
+  }
+
+  (async () => {
+    const user = await requireAuthOrRedirect();
+    if (!user) return;
+    loadSuggestions();
+    loadGroceryList();
+    loadHidden();
+  })();
+</script>
+</body></html>
