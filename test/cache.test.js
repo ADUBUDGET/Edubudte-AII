@@ -160,3 +160,28 @@ test("a full or blocked storage never breaks the page", () => {
   assert.doesNotThrow(() => cache.set("/api/favourites", [1]));
   assert.equal(cache.get("/api/favourites"), null);
 });
+
+test("confirming a purchase refreshes the basket, budget, dashboard and analytics", () => {
+  const cache = createApiCache(memoryStorage());
+  cache.setOwner(1);
+  for (const url of ["/api/basket", "/api/grocery-list", "/api/budget", "/api/dashboard", "/api/analytics", "/api/favourites"]) cache.set(url, {});
+  cache.invalidateFor("/api/basket/checkout");
+  for (const url of ["/api/basket", "/api/grocery-list", "/api/budget", "/api/dashboard", "/api/analytics"]) {
+    assert.equal(cache.get(url), null, url);
+  }
+  assert.ok(cache.get("/api/favourites"));
+});
+
+test("basket changes and a new shopping area clear the right caches", () => {
+  const cache = createApiCache(memoryStorage());
+  cache.setOwner(1);
+  cache.set("/api/basket", {});
+  cache.set("/api/location", {});
+  cache.set("/api/smart-basket", {});
+  cache.invalidateFor("/api/grocery-list/9");
+  assert.equal(cache.get("/api/basket"), null);
+  cache.set("/api/smart-basket", {});
+  cache.invalidateFor("/api/location");
+  assert.equal(cache.get("/api/location"), null);
+  assert.equal(cache.get("/api/smart-basket"), null, "suggestions are re-priced for the new area");
+});

@@ -76,12 +76,22 @@ const EB_MAX_AGE = {
 // A successful change to a URL on the left makes these cached URLs out of date.
 const EB_INVALIDATION_RULES = [
   [/^\/api\/favourites/, ["/api/favourites"]],
-  [/^\/api\/budget/, ["/api/budget", "/api/dashboard", "/api/analytics", "/api/smart-basket"]],
-  [/^\/api\/grocery-list/, ["/api/grocery-list", "/api/smart-basket"]],
+  [/^\/api\/budget/, ["/api/budget", "/api/dashboard", "/api/analytics", "/api/smart-basket", "/api/basket"]],
+  [/^\/api\/grocery-list/, ["/api/grocery-list", "/api/smart-basket", "/api/basket"]],
+  [/^\/api\/basket\/checkout/, ["/api/basket", "/api/grocery-list", "/api/budget", "/api/dashboard", "/api/analytics", "/api/smart-basket"]],
   [/^\/api\/smart-basket\//, ["/api/smart-basket"]],
-  [/^\/api\/auth\/profile/, ["/api/auth/me", "/api/dashboard", "/api/analytics", "/api/smart-basket"]],
+  [/^\/api\/auth\/profile/, ["/api/auth/me", "/api/dashboard", "/api/analytics", "/api/smart-basket", "/api/basket"]],
   [/^\/api\/search$/, ["/api/search/frequent", "/api/dashboard", "/api/smart-basket"]],
+  [/^\/api\/location/, ["/api/location", "/api/smart-basket"]],
 ];
+
+// Escapes text for the few places that still build HTML strings
+// (product titles and shop names come from third-party listings).
+function ebEscape(value) {
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 
 function createApiCache(storage, now = () => Date.now()) {
   let owner = null;
@@ -256,6 +266,75 @@ function showToast(message, { error = false } = {}) {
 }
 
 // ---------------------------------------------------------------
+// BASKET + BUDGET BANK (shared by Shop, Basket, Smart Basket, Favourites)
+// ---------------------------------------------------------------
+// Adds a product to the basket and says what happened. `item` uses the
+// /api/grocery-list fields (itemName, productTitle, supplierId or
+// storeName, price, quantity, unit, link, thumbnail, addedFrom).
+async function addToBasket(item) {
+  const { data } = await apiSend("POST", "/api/grocery-list", item);
+  const row = data.item || {};
+  const name = row.item_name || item.itemName;
+  let message = "Added " + name + " to your basket";
+  if (data.merge === "quantity") message = name + " is already in your basket - quantity is now " + row.quantity;
+  if (data.merge === "switched") message = name + " switched to " + row.store_name + " - quantity is now " + row.quantity;
+  showToast(message);
+  window.dispatchEvent(new CustomEvent("eb:basket-changed"));
+  return data;
+}
+
+// "Budget Bank" bar: available balance, basket estimate and what's left
+// after it, with a warning when the basket is more than the balance.
+// Refreshes itself whenever the basket changes on the page.
+function renderBudgetBar(container, { showBasketLink = true } = {}) {
+  ebEnsureStyles();
+  const draw = data => {
+    const b = data.budget, t = data.totals;
+    container.textContent = "";
+    container.className = "eb-budget eb-budget-" + b.status;
+    container.setAttribute("role", "status");
+    const icon = ebIcon(b.status === "over" ? "warning" : b.status === "no_budget" ? "info" : "account_balance_wallet");
+    icon.classList.add("eb-budget-icon");
+    container.appendChild(icon);
+    const body = ebEl("div", "eb-budget-body");
+    if (b.status === "no_budget") {
+      body.appendChild(ebEl("strong", null, "Set your monthly budget"));
+      body.appendChild(ebEl("span", null, " on the Profile page to track your basket against your Budget Bank."));
+    } else {
+      const line = ebEl("div", "eb-budget-line");
+      line.appendChild(ebEl("span", null, "Budget Bank "));
+      line.appendChild(ebEl("strong", null, formatZAR(b.available)));
+      line.appendChild(ebEl("span", "eb-budget-muted", " available"));
+      if (t.itemCount) {
+        line.appendChild(ebEl("span", "eb-budget-sep", " · "));
+        line.appendChild(ebEl("span", null, "Basket "));
+        line.appendChild(ebEl("strong", null, formatZAR(t.estimatedTotal)));
+        line.appendChild(ebEl("span", "eb-budget-muted", ` (${t.quantity} item${t.quantity === 1 ? "" : "s"})`));
+        line.appendChild(ebEl("span", "eb-budget-sep", " · "));
+        line.appendChild(ebEl("span", null, b.status === "over" ? "Over by " : "Left after basket "));
+        line.appendChild(ebEl("strong", null, formatZAR(b.status === "over" ? b.overBy : b.afterBasket)));
+      }
+      body.appendChild(line);
+      if (b.status === "over") body.appendChild(ebEl("div", "eb-budget-note", "Your basket is more than your available budget. Remove items or lower quantities before you buy."));
+      else if (b.status === "close") body.appendChild(ebEl("div", "eb-budget-note", "Heads up: this basket uses most of what's left this month."));
+      if (t.unpricedCount) body.appendChild(ebEl("div", "eb-budget-note", `${t.unpricedCount} item(s) have no price, so they aren't in the estimate.`));
+    }
+    container.appendChild(body);
+    if (showBasketLink && t.itemCount) {
+      const a = ebEl("a", "eb-budget-link", "View basket");
+      a.href = "/basket.html";
+      container.appendChild(a);
+    }
+  };
+  const load = () => loadWithCache("/api/basket", {
+    render: draw,
+    onError: () => { container.textContent = "Budget Bank couldn't be loaded right now."; container.className = "eb-budget"; },
+  });
+  window.addEventListener("eb:basket-changed", load);
+  return load();
+}
+
+// ---------------------------------------------------------------
 // MOST FREQUENTLY SEARCHED: a scrollable row of chips from the student's
 // own search history (GET /api/search/frequent). Used on Shop and Bank.
 // ---------------------------------------------------------------
@@ -343,6 +422,18 @@ const EB_CSS = `
 .eb-chip:hover{background:rgba(255,140,0,.12);border-color:rgba(255,183,125,.5)}
 .eb-chip:focus-visible{outline:2px solid #ffb77d;outline-offset:2px}
 .eb-chip-count{font-size:12px;color:#ffb77d}
+.eb-budget{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#e2e2e2;font:400 15px/22px 'Plus Jakarta Sans',sans-serif}
+.eb-budget-over{border-color:rgba(255,180,171,.5);background:rgba(147,0,10,.18)}
+.eb-budget-close{border-color:rgba(255,183,125,.5);background:rgba(255,140,0,.08)}
+.eb-budget-icon{color:#ffb77d;flex:none;margin-top:1px}
+.eb-budget-over .eb-budget-icon{color:#ffb4ab}
+.eb-budget-body{flex:1;min-width:0}
+.eb-budget-line strong{font-weight:700;color:#fff}
+.eb-budget-muted,.eb-budget-sep{color:#ddc1ae}
+.eb-budget-note{font-size:13px;line-height:18px;color:#ddc1ae;margin-top:4px}
+.eb-budget-over .eb-budget-note{color:#ffb4ab}
+.eb-budget-link{flex:none;align-self:center;color:#ffb77d;font-weight:700;font-size:14px;text-decoration:none;padding:8px 12px;border-radius:9999px;border:1px solid rgba(255,183,125,.4)}
+.eb-budget-link:hover{background:rgba(255,140,0,.12)}
 @media (prefers-reduced-motion:reduce){.eb-toast{transition:none}}
 `;
 
