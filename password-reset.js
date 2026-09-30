@@ -31,7 +31,13 @@ function passwordProblem(password, confirmPassword) {
   return null;
 }
 
-function createPasswordResetRoutes({ store, mailer, now = () => new Date() }) {
+// `waitForEmail`: send before replying. Needed on serverless hosts (Netlify),
+// which may freeze the function as soon as the response is sent. Replies then
+// take at least MIN_REPLY_MS so the timing doesn't reveal whether an account
+// exists.
+const MIN_REPLY_MS = 2000;
+
+function createPasswordResetRoutes({ store, mailer, now = () => new Date(), waitForEmail = false }) {
   // Creates a link and emails it. Runs after the reply has been sent.
   async function sendResetLink(email) {
     const user = await store.findUserByEmail(email);
@@ -56,10 +62,14 @@ function createPasswordResetRoutes({ store, mailer, now = () => new Date() }) {
         console.error("Password reset requested, but email (SMTP_*) is not configured.");
         return res.status(503).json({ error: "Password reset emails aren't available right now. Please try again later or contact support." });
       }
-      res.json({ message: SENT_MESSAGE });
-      return sendResetLink(email).catch(err => {
+      const sending = sendResetLink(email).catch(err => {
         console.error("Password reset email could not be sent:", err.code || err.name || "error");
       });
+      if (waitForEmail) {
+        await Promise.all([sending, new Promise(resolve => setTimeout(resolve, MIN_REPLY_MS))]);
+      }
+      res.json({ message: SENT_MESSAGE });
+      return sending;
     },
 
     // GET /api/auth/reset-password/check?token=...  (lets the page say

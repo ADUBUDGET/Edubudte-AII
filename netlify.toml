@@ -5,7 +5,11 @@
   command = "npm ci --omit=dev"
 
 [build.environment]
-  NODE_VERSION = "20"
+  # @netlify/functions needs Node 22.12+.
+  NODE_VERSION = "22"
+  # GROQ_MODEL is a public model name (it is in server.js and the README),
+  # not a secret - don't fail the build when the secrets scan finds it.
+  SECRETS_SCAN_OMIT_KEYS = "GROQ_MODEL"
 
 [[redirects]]
   from = "/api/*"

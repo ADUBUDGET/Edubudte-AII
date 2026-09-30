@@ -318,10 +318,23 @@ function cleanItemInput(body) {
 async function addItemToList(store, userId, body) {
   const item = cleanItemInput(body);
   if (!item.itemKey) throw badInput("itemName is required");
-
+  const remainingBudget = await store.getRemainingBudget(userId);
   const merge = async existing => {
     const switched = item.supplierId && item.supplierId !== existing.supplier_id;
     const quantity = Math.min(MAX_QUANTITY, (Number(existing.quantity) || 1) + item.quantity);
+    const previousTotal = (Number(existing.price) || 0) * (Number(existing.quantity) || 1);
+    const mergedPrice = item.price != null ? item.price : (switched ? null : existing.price);
+    // Only known prices can be checked against the budget; unpriced items
+    // are allowed and show as "Price unknown" in the basket.
+    if (remainingBudget != null && mergedPrice != null) {
+      const availableForUpdate = remainingBudget + previousTotal;
+      if (mergedPrice * quantity > availableForUpdate) {
+        const err = new Error(`That price would exceed your remaining budget of R${availableForUpdate.toFixed(2)}.`);
+        err.status = 409;
+        throw err;
+      }
+    }
+
     const updated = await store.mergeListItem(userId, existing.id, {
       quantity,
       // Keep the saved shop/price unless a (new) shop or price was given.
@@ -338,6 +351,11 @@ async function addItemToList(store, userId, body) {
 
   const existing = await store.findActiveListItem(userId, item.itemKey);
   if (existing) return merge(existing);
+  if (remainingBudget != null && item.price != null && item.price * item.quantity > remainingBudget) {
+    const err = new Error(`That price exceeds your remaining budget of R${remainingBudget.toFixed(2)}.`);
+    err.status = 409;
+    throw err;
+  }
   try {
     return { item: await store.insertListItem(userId, item), alreadyExisted: false, merge: null };
   } catch (err) {
@@ -519,6 +537,7 @@ function createSmartBasketRoutes({ store, fetchShopping = name => fetchShoppingR
     async addToList(req, res) {
       try {
         const result = await addItemToList(store, req.userId, req.body);
+        result.remainingBudget = await store.getRemainingBudget(req.userId);
         res.status(result.alreadyExisted ? 200 : 201).json(result);
       } catch (err) {
         fail(res, err, "Failed to add to grocery list");
