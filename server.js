@@ -185,12 +185,24 @@ Recommend the ONE best option considering both price and distance (closer is bet
 Strict formatting rules: no markdown tables, no pipe characters, no bullet points, no headers, no bold/asterisks - plain prose only, maximum 45 words. Mention the store name and price.
 `.trim();
 
-    const completion = await groq.chat.completions.create({
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-    });
-    const recommendation = completion.choices[0]?.message?.content || "No recommendation generated.";
+    let recommendation;
+    try {
+      const completion = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+      });
+      recommendation = completion.choices[0]?.message?.content || "No recommendation generated.";
+    } catch (err) {
+      console.error("Groq recommendation failed:", err.message);
+      const candidates = nearbyResults.length ? nearbyResults : rawResults;
+      const pricedCandidates = candidates.filter(r => r.extracted_price != null && Number.isFinite(Number(r.extracted_price)));
+      const fallback = (pricedCandidates.length ? pricedCandidates : candidates)
+        .sort((a, b) => Number(a.extracted_price ?? Infinity) - Number(b.extracted_price ?? Infinity))[0];
+      recommendation = fallback
+        ? `AI recommendations are temporarily unavailable. Consider ${fallback.title} from ${fallback.supplierName}${fallback.price ? ` for ${fallback.price}` : ""}.`
+        : "AI recommendations are temporarily unavailable. Review the listings below.";
+    }
 
     await sql`
       INSERT INTO search_history (user_id, item_query, budget, location)
