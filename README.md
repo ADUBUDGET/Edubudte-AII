@@ -63,6 +63,30 @@ only in-stock listings from approved suppliers and replaces the old deals. The D
 only shows deals checked in the last 3 days, with the time they were checked; if there
 are none, it says so instead of showing anything made up.
 
+## Deploy to Netlify
+
+The pages in `public/` are served by Netlify's CDN and the Express API runs as one
+Netlify Function (`netlify/functions/api.js`); `netlify.toml` routes `/api/*` and
+`/unsubscribe` to it. `npm start` still runs the normal local server.
+
+1. In Netlify: **Add new site -> Import an existing project -> GitHub** and pick this
+   repository and the branch to deploy. The build settings are read from `netlify.toml`
+   (leave them empty in the form).
+2. **Site configuration -> Environment variables**: add the same values as your `.env`:
+   `DATABASE_URL`, `JWT_SECRET`, `SERPAPI_KEY`, `GROQ_API_KEY`, `ORS_API_KEY`, and
+   `NODE_ENV=production` (makes the sign-in cookie HTTPS-only). Optional: `GROQ_MODEL`,
+   `SHOPPING_LOCATION`, and for emails `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`,
+   `MAIL_FROM`.
+3. Deploy, then set `APP_URL` to the site address (e.g. `https://your-site.netlify.app`,
+   used in password-reset links) and redeploy.
+
+Scheduled functions replace the server's timers: `email-job` sends notification emails
+hourly (only once SMTP is set) and `refresh-deals` refreshes Trending Deals daily at 04:00 UTC.
+
+Limits to know: each API request must finish within Netlify's function time limit
+(10 seconds by default), and the login/chat rate limits are counted per function
+instance rather than site-wide.
+
 ## Pages
 
 | Page | What it does |

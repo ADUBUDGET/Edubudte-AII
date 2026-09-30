@@ -187,7 +187,7 @@ function createEmailService({ app, sql, requireAuth, generators }) {
     }
   });
 
-  return { ensureEmailSchema, welcomeEmailHook, startEmailJob, sendNotificationEmails, sendWelcomeEmail };
+  return { ensureEmailSchema, welcomeEmailHook, startEmailJob, runEmailJobOnce, sendNotificationEmails, sendWelcomeEmail };
 }
 
 module.exports = { createEmailService };
