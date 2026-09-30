@@ -24,6 +24,9 @@ const passwordResetStore = require("./password-reset-store");
 const mailer = require("./mailer");
 
 const app = express();
+// Behind Netlify's (or any host's) proxy: use the real client IP for rate
+// limits and treat the request as HTTPS.
+app.set("trust proxy", 1);
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
@@ -952,18 +955,38 @@ const emailSvc = createEmailService({
 
 const PORT = process.env.PORT || 3000;
 
-initSchema()
-  .then(ensureChatSchema)
-  .then(ensureNotificationSchema)
-  .then(emailSvc.ensureEmailSchema)
-  .then(() => {
-    console.log("Chat, notification and email tables ready.");
-    app.listen(PORT, () => {
-      console.log(`\nEduBudget AI running at http://localhost:${PORT}\n`);
-      emailSvc.startEmailJob();
+// Creates/updates the tables once per process. On Netlify every function
+// instance calls this before its first request; a failure is retried on the
+// next request instead of being remembered.
+let schemaReady = null;
+function ready() {
+  if (!schemaReady) {
+    schemaReady = initSchema()
+      .then(ensureChatSchema)
+      .then(ensureNotificationSchema)
+      .then(emailSvc.ensureEmailSchema)
+      .catch(err => {
+        schemaReady = null;
+        throw err;
+      });
+  }
+  return schemaReady;
+}
+
+// `npm start` runs a normal server; netlify/functions/api.js imports the app.
+if (require.main === module) {
+  ready()
+    .then(() => {
+      console.log("Chat, notification and email tables ready.");
+      app.listen(PORT, () => {
+        console.log(`\nEduBudget AI running at http://localhost:${PORT}\n`);
+        emailSvc.startEmailJob();
+      });
+    })
+    .catch(err => {
+      console.error("Failed to initialise database schema:", err.message);
+      process.exit(1);
     });
-  })
-  .catch(err => {
-    console.error("Failed to initialise database schema:", err.message);
-    process.exit(1);
-  });
+}
+
+module.exports = { app, ready, runEmailJobOnce: emailSvc.runEmailJobOnce };

@@ -6,18 +6,17 @@
 //     Shop), keeping only approved suppliers and in-stock listings.
 // Nothing is hard-coded: with no qualifying searches, nothing is fetched and
 // the Bank page shows its empty state. Run it manually or on a schedule you
-// control - each run uses up to DEAL_QUERIES SerpAPI searches.
+// control - each run uses up to DEAL_QUERIES SerpAPI searches. On Netlify it
+// also runs daily as a scheduled function (netlify/functions/refresh-deals.js).
 require("dotenv").config();
 const { sql, initSchema } = require("../db");
 const { fetchShoppingResults } = require("../shopping-results");
 const { cleanShoppingResults } = require("../suppliers");
 const { DEAL_MIN_USERS, DEAL_QUERIES, DEALS_PER_QUERY } = require("../deals");
 
-async function refreshDeals() {
-  if (!process.env.SERPAPI_KEY) {
-    console.error("SERPAPI_KEY not set in .env");
-    process.exit(1);
-  }
+// Returns { terms, saved }. Throws when SerpAPI isn't configured.
+async function refreshDeals({ log = console.log } = {}) {
+  if (!process.env.SERPAPI_KEY) throw new Error("SERPAPI_KEY not set in .env");
   await initSchema();
 
   const terms = await sql`
@@ -30,8 +29,8 @@ async function refreshDeals() {
     LIMIT ${DEAL_QUERIES}
   `;
   if (!terms.length) {
-    console.log(`No term has been searched by ${DEAL_MIN_USERS}+ students in the last 30 days yet - nothing to refresh.`);
-    process.exit(0);
+    log(`No term has been searched by ${DEAL_MIN_USERS}+ students in the last 30 days yet - nothing to refresh.`);
+    return { terms: 0, saved: 0 };
   }
 
   const fresh = [];
@@ -40,7 +39,7 @@ async function refreshDeals() {
       const { results } = cleanShoppingResults(await fetchShoppingResults(term));
       const cheapest = results.sort((a, b) => a.extracted_price - b.extracted_price).slice(0, DEALS_PER_QUERY);
       cheapest.forEach(r => fresh.push({ term, r }));
-      console.log(`${term}: ${cheapest.length} deal(s) from approved shops`);
+      log(`${term}: ${cheapest.length} deal(s) from approved shops`);
     } catch (err) {
       console.error(`${term}: lookup failed (${err.message})`);
     }
@@ -54,11 +53,17 @@ async function refreshDeals() {
       VALUES (${term}, ${r.title}, ${r.price}, ${r.extracted_price}, ${r.source}, ${r.link}, ${r.thumbnail}, ${r.product_id}, ${r.supplierId})
     `;
   }
-  console.log(`\nDone. ${fresh.length} current deal(s) saved.`);
-  process.exit(0);
+  log(`\nDone. ${fresh.length} current deal(s) saved.`);
+  return { terms: terms.length, saved: fresh.length };
 }
 
-refreshDeals().catch(err => {
-  console.error("Refresh failed:", err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  refreshDeals()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error("Refresh failed:", err.message);
+      process.exit(1);
+    });
+}
+
+module.exports = { refreshDeals };
