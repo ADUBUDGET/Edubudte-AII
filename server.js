@@ -54,7 +54,8 @@ app.put("/api/auth/profile", authRoutes.requireAuth, authRoutes.updateProfile);
 // few link requests per IP, and a handful of reset attempts.
 passwordReset.registerPasswordResetRoutes(
   app,
-  passwordReset.createPasswordResetRoutes({ store: passwordResetStore, mailer }),
+  // Netlify Functions run on AWS Lambda, which sets this variable.
+  passwordReset.createPasswordResetRoutes({ store: passwordResetStore, mailer, waitForEmail: !!process.env.AWS_LAMBDA_FUNCTION_NAME }),
   {
     requestLimiter: rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { error: "Too many reset requests. Please wait 15 minutes and try again." } }),
     resetLimiter: rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: "Too many attempts. Please wait 15 minutes and try again." } }),
