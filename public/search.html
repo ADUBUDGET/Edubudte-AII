@@ -187,7 +187,7 @@
 <span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
 <span class="font-label-sm">Shop</span>
 </button>
-<button class="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors tap-highlight-transparent active:scale-95 transition-transform" onclick="location.href='/smart-basket.html'">
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors tap-highlight-transparent active:scale-95 transition-transform" onclick="location.href='/basket.html'">
 <span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
 <span class="font-label-sm">Basket</span>
 </button>
@@ -229,7 +229,9 @@
 <!-- Location Input -->
 <div class="md:col-span-4 glass-input rounded-3xl p-4 flex items-center gap-3 h-[60px]">
 <span class="material-symbols-outlined text-primary-fixed">location_on</span>
-<input class="bg-transparent border-none text-on-background placeholder-on-surface-variant w-full focus:ring-0 text-on-background" id="locationInput" placeholder="Location (e.g., Durban)" type="text">
+<label class="sr-only" for="locationInput">Your shopping area (suburb, address or postcode)</label>
+<input autocomplete="address-level2" class="bg-transparent border-none text-on-background placeholder-on-surface-variant w-full focus:ring-0 text-on-background" id="locationInput" placeholder="Your suburb, address or postcode" type="text">
+<button aria-label="Use my current location" class="text-primary hover:bg-white/10 rounded-full w-9 h-9 flex items-center justify-center shrink-0" id="useMyLocationBtn" title="Use my current location" type="button"><span class="material-symbols-outlined text-[20px]">my_location</span></button>
 </div>
 <!-- Price Range -->
 <div class="md:col-span-4 glass-input rounded-3xl p-4 flex items-center gap-3 h-[60px]">
@@ -247,11 +249,11 @@
 <span class="material-symbols-outlined text-[16px]">route</span> Distance
                         </span>
 <div class="flex items-center gap-1">
-<input class="w-14 bg-transparent border border-glass-stroke rounded-md text-center text-primary font-label-lg text-label-lg focus:ring-0" id="radiusManualInput" type="number" min="1" max="2000" value="15">
+<input class="w-14 bg-transparent border border-glass-stroke rounded-md text-center text-primary font-label-lg text-label-lg focus:ring-0" id="radiusManualInput" type="number" min="1" max="200" value="15" aria-label="Search radius in kilometres">
 <span class="text-primary font-label-sm text-label-sm">km</span>
 </div>
 </div>
-<input class="w-full" id="radiusInput" max="100" min="1" type="range" value="15">
+<input aria-label="Search radius" class="w-full" id="radiusInput" max="100" min="1" type="range" value="15">
 </div>
 <!-- Search Action -->
 <div class="md:col-span-2 flex justify-end h-[60px]">
@@ -279,9 +281,8 @@
 </section>
 <!-- Budget Status: persistent, set from your Spending Target on the Profile
      page. Updates automatically and warns if you're over. -->
-<section class="glass-panel rounded-2xl p-4 flex items-center gap-3" id="budgetStatusBanner">
-<span class="material-symbols-outlined" id="budgetStatusIcon">account_balance_wallet</span>
-<p class="font-body-md text-body-md flex-1" id="budgetStatusText">Loading budget status...</p>
+<section aria-label="Budget Bank" class="eb-budget" id="budgetStatusBanner">
+<p class="font-body-md text-body-md flex-1 text-on-surface-variant">Loading your Budget Bank...</p>
 </section>
 <!-- Search Results Header -->
 <div class="flex justify-between items-end mt-4 px-2">
@@ -302,7 +303,7 @@
 <div class="flex gap-2 overflow-x-auto pb-4 px-2 no-scrollbar">
 <button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary-container/20 border border-primary/30 text-primary font-label-sm text-label-sm backdrop-blur-md" id="sortLowHigh" type="button">Price: Low to High</button>
 <button class="whitespace-nowrap px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-background font-label-sm text-label-sm backdrop-blur-md hover:bg-white/5 text-white" id="sortHighLow" type="button">Price: High to Low</button>
-<button class="whitespace-nowrap px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-background font-label-sm text-label-sm backdrop-blur-md hover:bg-white/5 text-white" type="button">Closest First</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-background font-label-sm text-label-sm backdrop-blur-md hover:bg-white/5 text-white" id="sortClosest" type="button">Closest First</button>
 <button class="whitespace-nowrap px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-background font-label-sm text-label-sm backdrop-blur-md hover:bg-white/5 text-white" type="button">Rating</button>
 <button class="whitespace-nowrap px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-background font-label-sm text-label-sm backdrop-blur-md hover:bg-white/5 text-white" type="button">Condition</button>
 </div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter mb-12 items-start" id="resultsContainer">
@@ -329,7 +330,7 @@
 <span class="material-symbols-outlined text-2xl mb-1" data-icon="shopping_bag">shopping_bag</span>
 <span class="text-[10px] text-white text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Shop</span>
 </button>
-<button class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-0 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform flex-1 min-w-0" onclick="location.href='/smart-basket.html'">
+<button class="flex flex-col items-center justify-center text-on-surface-variant py-2 px-0 hover:bg-white/5 transition-colors tap-highlight-transparent active:scale-95 transition-transform flex-1 min-w-0" onclick="location.href='/basket.html'">
 <span class="material-symbols-outlined text-2xl mb-1" data-icon="shopping_basket">shopping_basket</span>
 <span class="text-[10px] text-secondary text-white text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Basket</span>
 </button>
@@ -367,26 +368,38 @@
       countLabel.textContent += ` — ${radiusNote}`;
     }
     if (results.length === 0) {
-      container.innerHTML = '<p class="text-on-surface-variant col-span-full">No live results found - try a different search term.</p>';
+      container.innerHTML = '<p class="text-on-surface-variant col-span-full">No products from our approved South African stores matched - try a simpler search term (e.g. "rice" instead of a brand and size).</p>';
       return;
     }
+    const esc = ebEscape;
+    const distanceLine = r => {
+      if (r.proximity === 'nearby') return `<span class="text-primary">&middot; ${esc(formatDistanceLabel(r.distanceKm))}</span>`;
+      if (r.proximity === 'far') return `<span class="text-yellow-300">&middot; Farther away: ${esc(formatDistanceLabel(r.distanceKm))}</span>`;
+      if (r.proximity === 'unknown' && r.hasOwnProperty('distanceKm') && lastLocation && lastLocation.label) return '<span class="text-on-surface-variant/70 italic">&middot; distance unknown</span>';
+      return '';
+    };
     container.innerHTML = results.map((r, i) => `
       <article class="glass-panel rounded-2xl overflow-hidden group hover:-translate-y-1 transition-transform duration-300 flex flex-col">
         <div class="relative h-48 w-full overflow-hidden">
-          <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="${r.thumbnail || ''}" onerror="this.style.opacity=0">
+          <img alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="${esc(r.thumbnail || '')}" onerror="this.style.opacity=0">
+          ${r.cheapestNearby ? '<span class="absolute top-3 left-3 bg-primary text-on-primary font-label-sm px-3 py-1 rounded-full">Cheapest nearby</span>' : ''}
         </div>
         <div class="p-4 flex flex-col gap-2 flex-grow">
           <div class="flex justify-between items-start">
-            <h3 class="font-label-lg text-label-lg text-on-background line-clamp-2 text-on-background">${r.title || 'Untitled'}</h3>
-            <span class="font-headline-lg-mobile text-headline-lg-mobile font-bold ml-2 whitespace-nowrap text-primary">${r.price || 'N/A'}</span>
+            <h3 class="font-label-lg text-label-lg text-on-background line-clamp-2 text-on-background">${esc(r.title || 'Untitled')}</h3>
+            <span class="font-headline-lg-mobile text-headline-lg-mobile font-bold ml-2 whitespace-nowrap text-primary">${esc(r.extracted_price != null ? formatZAR(r.extracted_price) : (r.price || 'N/A'))}</span>
           </div>
-          ${r.link ? `<a href="${r.link}" target="_blank" class="text-primary font-label-sm text-label-sm hover:underline">View listing</a>` : ''}
+          ${/^https?:\/\//i.test(r.link || '') ? `<a href="${esc(r.link)}" target="_blank" rel="noopener" class="text-primary font-label-sm text-label-sm hover:underline">View listing</a>` : ''}
+          <button class="mt-1 w-full py-2.5 rounded-xl bg-primary text-on-primary font-label-lg flex items-center justify-center gap-2 active:scale-95 transition-transform" onclick="addResultToBasket(${i})" type="button">
+            <span class="material-symbols-outlined text-[18px]">add_shopping_cart</span><span>Add to basket</span>
+          </button>
           <div class="mt-auto pt-4 border-t border-glass-stroke/50 flex flex-col gap-1">
             <div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm text-on-background">
               <span class="material-symbols-outlined text-[14px]">storefront</span>
-              <span>${r.source || 'Unknown store'}</span>
-              ${r.distanceKm != null ? `<span class="text-primary ml-1">&middot; ${r.distanceKm} km away</span>` : (r.distanceKm === null && r.hasOwnProperty('distanceKm') ? `<span class="text-on-surface-variant/60 ml-1 italic">&middot; distance unverified</span>` : '')}
+              <span>${esc(r.supplierName || r.source || 'Unknown store')}</span>
+              ${distanceLine(r)}
             </div>
+            ${r.branchName ? `<div class="text-on-surface-variant text-xs">Nearest: ${esc(r.branchName)}</div>` : ''}
             <button class="flex items-center gap-1 text-primary font-label-sm text-label-sm hover:underline text-left" onclick="getDirections(${i})" type="button">
               <span class="material-symbols-outlined text-[14px]">directions_car</span>
               <span>Directions &amp; Travel Cost</span>
@@ -401,42 +414,119 @@
     `).join('');
   }
 
-  // Best-effort geolocation with a short timeout - used as a radius-filter
-  // anchor when no location text is typed. Never blocks the search if denied.
-  function getPositionQuick(timeoutMs = 4000) {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) return resolve(null);
-      const timer = setTimeout(() => resolve(null), timeoutMs);
-      navigator.geolocation.getCurrentPosition(
-        (pos) => { clearTimeout(timer); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
-        () => { clearTimeout(timer); resolve(null); }
-      );
-    });
+  // ---- Shopping area (saved on the account; see location.js) ----
+  let lastLocation = null;   // what the server says is saved: { label, hasLocation, radiusKm, source }
+  let savedRadius = null;
+
+  function formatDistanceLabel(km) {
+    if (km == null || !isFinite(Number(km))) return 'distance unknown';
+    const n = Number(km);
+    if (n < 1) return Math.max(50, Math.round(n * 1000 / 50) * 50) + ' m away';
+    return (n < 10 ? n.toFixed(1) : Math.round(n)) + ' km away';
+  }
+
+  function showArea(loc) {
+    lastLocation = loc;
+    const input = document.getElementById('locationInput');
+    input.value = loc && loc.hasLocation ? loc.label : '';
+    input.dataset.saved = input.value;
+    if (loc && loc.radiusKm) {
+      savedRadius = loc.radiusKm;
+      document.getElementById('radiusManualInput').value = loc.radiusKm;
+      document.getElementById('radiusInput').value = Math.min(100, loc.radiusKm);
+    }
+  }
+
+  async function loadArea() {
+    try {
+      const resp = await fetch('/api/location');
+      if (resp.ok) showArea(await resp.json());
+    } catch (e) { /* offline: search still works without distances */ }
+  }
+
+  // Saves a typed area if it changed. Returns false if it couldn't be used.
+  async function saveTypedArea() {
+    const input = document.getElementById('locationInput');
+    const text = input.value.trim();
+    if (text === (input.dataset.saved || '')) return true;
+    try {
+      if (!text) {
+        showArea((await apiSend('DELETE', '/api/location')).data);
+        showToast('Shopping area cleared - shops are no longer sorted by distance');
+        return true;
+      }
+      showArea((await apiSend('PUT', '/api/location', { source: 'typed', label: text })).data);
+      showToast('Shopping area set to ' + text);
+      return true;
+    } catch (err) {
+      showToast(err.message, { error: true });
+      input.focus();
+      return false;
+    }
+  }
+
+  // Current location is only read after the student taps the button (the
+  // browser then asks for permission).
+  document.getElementById('useMyLocationBtn').addEventListener('click', () => {
+    if (!navigator.geolocation) return showToast("Your browser can't share your location - type your suburb or postcode instead.", { error: true });
+    showToast('Finding your location...');
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        showArea((await apiSend('PUT', '/api/location', { source: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude })).data);
+        showToast('Using your current location for nearby shops');
+        if (document.getElementById('itemInput').value.trim()) doSearch();
+      } catch (err) {
+        showToast(err.message, { error: true });
+      }
+    }, err => {
+      const denied = err && err.code === 1;
+      showToast(denied ? 'Location permission was denied - type your suburb or postcode instead.' : "Couldn't get your location - type your suburb or postcode instead.", { error: true });
+      document.getElementById('locationInput').focus();
+    }, { timeout: 10000, maximumAge: 5 * 60 * 1000 });
+  });
+
+  // Radius changes are saved (after a short pause while dragging).
+  let radiusTimer = null;
+  function saveRadiusSoon() {
+    clearTimeout(radiusTimer);
+    radiusTimer = setTimeout(async () => {
+      const km = Number(document.getElementById('radiusManualInput').value);
+      if (!(km >= 1 && km <= 200) || km === savedRadius) return;
+      try {
+        savedRadius = (await apiSend('PUT', '/api/location', { radiusKm: km })).data.radiusKm;
+        if (currentResults.length) showToast('Search radius set to ' + km + ' km - search again to update the list');
+      } catch (err) { showToast(err.message, { error: true }); }
+    }, 700);
+  }
+
+  async function addResultToBasket(i) {
+    const r = currentResults[i];
+    try {
+      await addToBasket({
+        itemName: r.title, productTitle: r.title, supplierId: r.supplierId, price: r.extracted_price ?? null,
+        productId: r.product_id || null, priceCheckedAt: lastPricesCheckedAt,
+        quantity: 1, link: r.link || null, thumbnail: r.thumbnail || null, addedFrom: 'shop',
+      });
+    } catch (err) {
+      showToast("Couldn't add to basket: " + err.message, { error: true });
+    }
   }
 
   async function doSearch() {
     const item = document.getElementById('itemInput').value.trim();
-    const location = document.getElementById('locationInput').value.trim();
     const minPrice = document.getElementById('minInput').value;
     const maxPrice = document.getElementById('maxInput').value;
-    const radiusKm = document.getElementById('radiusManualInput').value;
     if (!item) {
       showToast('Type what you are looking for first', { error: true });
       return document.getElementById('itemInput').focus();
     }
 
+    if (!(await saveTypedArea())) return;
+    const location = '';
     const btnLabel = document.getElementById('searchBtnLabel');
     btnLabel.textContent = 'Searching...';
     document.getElementById('recommendationBanner').classList.add('hidden');
     document.getElementById('resultsContainer').innerHTML = '<p class="text-on-surface-variant col-span-full">Searching real listings...</p>';
-
-    // Only bother asking for GPS if a radius is set and no location text was
-    // typed (location text takes priority as the anchor when both are given).
-    let originLat = null, originLng = null;
-    if (radiusKm && !location) {
-      const pos = await getPositionQuick();
-      if (pos) { originLat = pos.lat; originLng = pos.lng; }
-    }
 
     try {
       const resp = await fetch('/api/search', {
@@ -446,18 +536,16 @@
           item,
           minPrice: minPrice || null,
           maxPrice: maxPrice || null,
-          location: location || null,
-          radiusKm: radiusKm || null,
-          originLat, originLng,
         }),
       });
       const data = await resp.json();
       btnLabel.textContent = 'Search Local';
 
       if (data.error) {
-        document.getElementById('resultsContainer').innerHTML = `<p class="text-error col-span-full">Error: ${data.detail || data.error}</p>`;
+        document.getElementById('resultsContainer').innerHTML = `<p class="text-error col-span-full">${ebEscape(data.error)}. Please try again.</p>`;
         return;
       }
+      if (data.location) lastLocation = { ...(lastLocation || {}), label: data.location.label, radiusKm: data.location.radiusKm };
 
       if (data.recommendation) {
         document.getElementById('recommendationText').textContent = data.recommendation;
@@ -476,7 +564,7 @@
       // refresh "Most frequently searched" (and other caches a search affects).
       ebCache.invalidateFor('/api/search');
       ebCache.set(LAST_SEARCH_KEY, {
-        form: { item, location, minPrice, maxPrice, radiusKm },
+        form: { item, minPrice, maxPrice },
         results: currentResults,
         recommendation: data.recommendation || null,
         radiusNote: lastRadiusNote,
@@ -498,12 +586,21 @@
   }
   document.getElementById('sortLowHigh').addEventListener('click', () => sortResults('asc'));
   document.getElementById('sortHighLow').addEventListener('click', () => sortResults('desc'));
+  document.getElementById('sortClosest').addEventListener('click', () => {
+    if (!lastLocation || !lastLocation.label) {
+      showToast('Set your shopping area first to sort by distance', { error: true });
+      return document.getElementById('locationInput').focus();
+    }
+    currentResults = [...currentResults].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+    renderResults(currentResults);
+  });
 
   async function saveFavourite(i) {
     const r = currentResults[i];
     try {
       const { data } = await apiSend('POST', '/api/favourites', {
-        itemName: r.title, storeName: r.source, price: r.extracted_price ?? null, link: r.link || null, thumbnail: r.thumbnail || null,
+        itemName: r.title, storeName: r.source, supplierId: r.supplierId || null, price: r.extracted_price ?? null, link: r.link || null, thumbnail: r.thumbnail || null,
+        productId: r.product_id || null, priceCheckedAt: lastPricesCheckedAt,
       });
       showToast(data.alreadyExisted ? 'Already in your favourites - saved price updated' : 'Added to favourites');
     } catch (err) {
@@ -530,7 +627,6 @@
     if (!saved || !saved.data || !Array.isArray(saved.data.results)) return false;
     const last = saved.data;
     document.getElementById('itemInput').value = last.form.item || '';
-    document.getElementById('locationInput').value = last.form.location || '';
     document.getElementById('minInput').value = last.form.minPrice || '';
     if (last.form.maxPrice) document.getElementById('maxInput').value = last.form.maxPrice;
     currentResults = last.results;
@@ -543,8 +639,12 @@
     renderResults(currentResults);
     const age = Date.now() - new Date(last.pricesCheckedAt).getTime();
     if (age > EB_MAX_AGE.prices) {
+      // Older prices are never shown as current: refresh straight away when
+      // online (the server reuses its own recent real results, so this is
+      // usually free), otherwise say clearly how old they are.
       const countLabel = document.getElementById('resultsCountLabel');
-      countLabel.textContent = 'Your last search - prices may have changed since ' + ebTimeSince(new Date(last.pricesCheckedAt).getTime()) + '. Tap Search Local for current prices.';
+      countLabel.textContent = 'Your last search - prices from ' + ebTimeSince(new Date(last.pricesCheckedAt).getTime()) + (navigator.onLine === false ? ' (you’re offline, so they may have changed).' : ', updating...');
+      if (navigator.onLine !== false && last.form.item) doSearch();
     }
     return true;
   }
@@ -647,52 +747,18 @@
     );
   }
 
-  async function refreshBudgetStatus() {
-    try {
-      const resp = await fetch('/api/dashboard');
-      const dash = await resp.json();
-      const target = currentUser.spendingTarget != null ? Number(currentUser.spendingTarget) : Number(dash.monthlyBudget);
-      const spent = Number(dash.totalSpent);
-      const remaining = target - spent;
-      const banner = document.getElementById('budgetStatusBanner');
-      const icon = document.getElementById('budgetStatusIcon');
-      const text = document.getElementById('budgetStatusText');
-
-      banner.classList.remove('bg-red-500/10', 'border', 'border-red-500/40', 'bg-yellow-500/10', 'border-yellow-500/40');
-      if (remaining < 0) {
-        icon.textContent = 'warning';
-        icon.className = 'material-symbols-outlined text-red-400';
-        text.className = 'font-body-md text-body-md flex-1 text-red-400';
-        text.textContent = `Over budget: you've spent ${formatZAR(spent)} of your ${formatZAR(target)} target (${formatZAR(Math.abs(remaining))} over).`;
-      } else if (remaining < target * 0.2) {
-        icon.textContent = 'error_outline';
-        icon.className = 'material-symbols-outlined text-yellow-400';
-        text.className = 'font-body-md text-body-md flex-1 text-yellow-400';
-        text.textContent = `Getting close: ${formatZAR(remaining)} left of your ${formatZAR(target)} target.`;
-      } else {
-        icon.textContent = 'account_balance_wallet';
-        icon.className = 'material-symbols-outlined text-primary';
-        text.className = 'font-body-md text-body-md flex-1 text-on-surface-variant';
-        text.textContent = `${formatZAR(remaining)} left of your ${formatZAR(target)} target (${formatZAR(spent)} spent so far).`;
-      }
-      return { target, spent, remaining };
-    } catch (e) {
-      document.getElementById('budgetStatusText').textContent = 'Set a Spending Target or Monthly Budget on the Profile page to see this.';
-      return null;
-    }
-  }
-
   // Distance: slider and manual number input stay in sync both ways.
-  // Slider visually caps at 100km (keeps the drag range usable), but the
-  // manual input allows any value (e.g. 500+ km for cross-province searches)
-  // - the manual input is always the source of truth sent to the backend.
+  // Slider visually caps at 100 km (keeps the drag range usable); the manual
+  // input allows up to 200 km. The value is saved as the search radius.
   const radiusSlider = document.getElementById('radiusInput');
   const radiusManual = document.getElementById('radiusManualInput');
-  radiusSlider.addEventListener('input', () => { radiusManual.value = radiusSlider.value; });
+  radiusSlider.addEventListener('input', () => { radiusManual.value = radiusSlider.value; saveRadiusSoon(); });
   radiusManual.addEventListener('input', () => {
     const v = Number(radiusManual.value);
     if (v >= 1 && v <= Number(radiusSlider.max)) radiusSlider.value = v;
+    saveRadiusSoon();
   });
+  document.getElementById('locationInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveTypedArea(); });
 
   // Voice search: click the mic, speak, it fills the box and searches
   // automatically. Uses the browser's built-in Web Speech API (free, no
@@ -751,7 +817,8 @@
       maxInput.value = currentUser.spendingTarget;
     }
 
-    await refreshBudgetStatus();
+    renderBudgetBar(document.getElementById('budgetStatusBanner'));
+    await loadArea();
 
     loadFrequentSearches();
     const params = new URLSearchParams(window.location.search);

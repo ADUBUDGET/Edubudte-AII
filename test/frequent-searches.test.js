@@ -3,6 +3,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { rankFrequentSearches, frequentSearchKey } = require("../frequent-searches");
 const { searchCacheKey, getOrFetchResults } = require("../search-cache");
+const { mapShoppingResult } = require("../shopping-results");
+const real = (title, price, source) => mapShoppingResult({ product_id: "id-" + price, title, extracted_price: price, source, product_link: "https://www.google.com/search?prds=catalogid:" + price });
 
 const NOW = new Date("2026-09-29T12:00:00Z");
 const daysAgo = n => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000);
@@ -70,17 +72,21 @@ test("search cache keys ignore case and spacing, and separate locations", () => 
 });
 
 test("a repeat search within 6 hours reuses results without calling SerpAPI", async () => {
-  const store = fakeStore({ "search:za:rice": { results: [{ title: "Rice" }], fetchedAt: new Date(NOW.getTime() - 60 * 60 * 1000) } });
+  const key = searchCacheKey("rice", "Durban");
+  const cached = [real("Rice 2kg", 39.99, "Shoprite")];
+  const store = fakeStore({ [key]: { results: cached, fetchedAt: new Date(NOW.getTime() - 60 * 60 * 1000) } });
   let calls = 0;
-  const out = await getOrFetchResults({ store, key: "search:za:rice", fetcher: async () => { calls++; return []; }, now: NOW });
+  const out = await getOrFetchResults({ store, key, fetcher: async () => { calls++; return []; }, now: NOW });
   assert.equal(calls, 0);
   assert.equal(out.fromCache, true);
-  assert.deepEqual(out.results, [{ title: "Rice" }]);
+  assert.deepEqual(out.results, cached, "exactly the stored real results (product id, price, link...)");
+  assert.equal(out.fetchedAt.getTime(), NOW.getTime() - 60 * 60 * 1000, "with the time they were really checked");
 });
 
 test("expired results are fetched again and saved, with the new check time", async () => {
   const store = fakeStore({ "search:za:rice": { results: [], fetchedAt: new Date(NOW.getTime() - 7 * 60 * 60 * 1000) } });
   const out = await getOrFetchResults({ store, key: "search:za:rice", fetcher: async () => [{ title: "Fresh rice" }], now: NOW });
+  // (expired entries are fetched again whatever their format)
   assert.equal(out.fromCache, false);
   assert.equal(out.fetchedAt, NOW);
   assert.deepEqual(store.map.get("search:za:rice").results, [{ title: "Fresh rice" }]);
@@ -99,4 +105,16 @@ test("a failed live lookup is reported, not cached", async () => {
   const store = fakeStore();
   await assert.rejects(getOrFetchResults({ store, key: "k", fetcher: async () => { throw new Error("SerpAPI down"); }, now: NOW }), /SerpAPI down/);
   assert.equal(store.map.size, 0);
+});
+
+test("cache keys are versioned, so entries written by older code are never read", () => {
+  assert.match(searchCacheKey("Brown Bread", "Durban, KZN"), /^v2:search:durban kzn:brown bread$/);
+});
+
+test("a fresh entry in the old incomplete format is fetched again, not shown", async () => {
+  const key = searchCacheKey("rice", "Durban");
+  const store = fakeStore({ [key]: { results: [{ title: "Rice", extracted_price: 0.9, source: "Musafir" }], fetchedAt: NOW } });
+  const out = await getOrFetchResults({ store, key, fetcher: async () => [real("Rice 2kg", 39.99, "Shoprite")], now: NOW });
+  assert.equal(out.fromCache, false);
+  assert.equal(out.results[0].product_id, "id-39.99");
 });

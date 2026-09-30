@@ -7,10 +7,12 @@
   "scripts": {
     "start": "node server.js",
     "refresh-deals": "node scripts/refresh-deals.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:integration": "node --env-file=.env integration/checkout.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
+    "@netlify/functions": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.4.5",
@@ -18,6 +20,7 @@
     "express-rate-limit": "^7.4.0",
     "groq-sdk": "^0.7.0",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^10.0.10"
+    "nodemailer": "^10.0.10",
+    "serverless-http": "^4.0.0"
   }
 }

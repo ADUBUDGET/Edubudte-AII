@@ -149,7 +149,7 @@
 <span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
 <span class="font-label-lg">Shop</span>
 </a>
-<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/smart-basket.html">
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/basket.html">
 <span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
 <span class="font-label-lg">Basket</span>
 </a>
@@ -226,7 +226,7 @@
 <span class="material-symbols-outlined mb-1" data-icon="shopping_bag">shopping_bag</span>
 <span class="text-[10px] tracking-normal font-semibold">Shop</span>
 </button>
-<button class="flex flex-1 min-w-0 flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface" onclick="location.href='/smart-basket.html'">
+<button class="flex flex-1 min-w-0 flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface" onclick="location.href='/basket.html'">
 <span class="material-symbols-outlined mb-1" data-icon="shopping_basket">shopping_basket</span>
 <span class="text-[10px] tracking-normal font-semibold">Basket</span>
 </button>
@@ -337,12 +337,19 @@
     if (f.price != null) detail.push(formatZAR(f.price));
     if (f.store_name) detail.push(f.store_name);
     if (detail.length) label.appendChild(el('span', 'block text-sm text-on-surface-variant', detail.join(' at ') + (f.price != null ? ' (saved price)' : '')));
+    // Saved prices are never presented as current: say when they were checked.
+    if (f.price != null) {
+      const checked = f.price_checked_at ? new Date(f.price_checked_at).getTime() : null;
+      const old = !checked || Date.now() - checked > 24 * 60 * 60 * 1000;
+      label.appendChild(el('span', 'block text-xs ' + (old ? 'text-yellow-300' : 'text-on-surface-variant'),
+        checked ? 'Price checked ' + ebTimeSince(checked) + (old ? ' - may have changed' : '') : 'Price date unknown - may have changed'));
+    }
     body.appendChild(label);
     body.appendChild(el('span', 'block text-xs mt-1 ' + (purchased ? 'text-primary' : 'text-on-surface-variant'),
       purchased ? 'Purchased ' + shortDate(f.purchased_at) : 'Saved ' + shortDate(f.created_at)));
 
     const actions = el('div', 'flex flex-wrap gap-x-4 gap-y-1 mt-2');
-    const addToList = el('button', 'text-primary font-label-sm hover:underline fav-focusable rounded', 'Add to grocery list');
+    const addToList = el('button', 'text-primary font-label-sm hover:underline fav-focusable rounded', 'Add to basket');
     addToList.type = 'button';
     addToList.addEventListener('click', () => addToGroceryList(f));
     actions.appendChild(addToList);
@@ -435,12 +442,14 @@
 
   async function addToGroceryList(f) {
     try {
-      const { data } = await apiSend('POST', '/api/grocery-list', {
-        itemName: f.item_name, storeName: f.store_name, price: f.price, link: f.link, thumbnail: f.thumbnail, addedFrom: 'manual',
+      await addToBasket({
+        itemName: f.item_name, storeName: f.store_name || undefined, price: f.price, quantity: 1,
+        supplierId: f.supplier_id || undefined, productId: f.product_id || undefined,
+        priceCheckedAt: f.price_checked_at || undefined,
+        link: f.link, thumbnail: f.thumbnail, addedFrom: 'favourite',
       });
-      showToast(data.alreadyExisted ? f.item_name + ' is already on your grocery list' : 'Added ' + f.item_name + ' to your grocery list');
     } catch (err) {
-      showToast("Couldn't add: " + err.message, { error: true });
+      showToast("Couldn't add to basket: " + err.message, { error: true });
     }
   }
 

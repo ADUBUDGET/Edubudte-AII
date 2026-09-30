@@ -170,7 +170,7 @@
 <span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
 <span class="font-label-lg">Shop</span>
 </a>
-<a aria-current="page" class="flex items-center gap-4 bg-primary-container/20 text-on-surface p-3 rounded-xl shadow-[0_0_15px_rgba(255,140,0,0.3)] transition-transform" href="/smart-basket.html">
+<a aria-current="page" class="flex items-center gap-4 bg-primary-container/20 text-on-surface p-3 rounded-xl shadow-[0_0_15px_rgba(255,140,0,0.3)] transition-transform" href="/basket.html">
 <span class="material-symbols-outlined" data-icon="shopping_basket" style="font-variation-settings: 'FILL' 1;">shopping_basket</span>
 <span class="font-label-lg">Basket</span>
 </a>
@@ -199,6 +199,10 @@
 </div>
 </header>
 <main class="max-w-7xl w-full mx-auto px-margin-mobile md:px-margin-desktop py-gutter flex-1">
+<nav aria-label="Basket sections" class="flex gap-2 mb-5">
+<a class="px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-surface font-label-lg hover:bg-white/5 sb-focusable" href="/basket.html">My basket</a>
+<a aria-current="page" class="px-4 py-2 rounded-full bg-primary-container/20 border border-primary/30 text-primary font-label-lg sb-focusable" href="/smart-basket.html">Smart suggestions</a>
+</nav>
 <div class="mb-6">
 <h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-surface">Smart Basket</h2>
 <p class="font-body-md text-on-surface-variant mt-1 text-sm md:text-base" id="basketIntro">Suggestions based on what you buy and search for, with the cheapest price we can find.</p>
@@ -242,7 +246,7 @@
 <aside class="md:col-span-5 flex flex-col gap-gutter">
 <section class="glass-panel rounded-2xl p-6" aria-labelledby="listHeading">
 <div class="flex items-baseline justify-between mb-4">
-<h3 class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface" id="listHeading">My Grocery List</h3>
+<h3 class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface" id="listHeading">My Basket</h3>
 <span class="font-label-sm text-on-surface-variant" id="listTotal"></span>
 </div>
 <form class="flex flex-wrap gap-2 mb-4" id="manualAddForm">
@@ -252,6 +256,7 @@
 <input class="glass-input w-24 rounded-xl px-3 py-2 bg-white/5 border border-glass-stroke text-on-surface" id="manualPriceInput" min="0" placeholder="Price (R)" step="0.01" type="number"/>
 <button class="px-4 py-2 rounded-xl bg-primary text-on-primary font-label-sm" type="submit">Add</button>
 </form>
+<a class="block mb-3 text-primary font-label-lg hover:underline sb-focusable rounded" href="/basket.html">Open basket to change quantities or confirm a purchase</a>
 <ul class="flex flex-col" id="groceryList">
 <li class="text-on-surface-variant font-body-md text-sm">Loading...</li>
 </ul>
@@ -274,7 +279,7 @@
 <span class="material-symbols-outlined mb-1" data-icon="shopping_bag">shopping_bag</span>
 <span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Shop</span>
 </button>
-<button aria-current="page" class="flex flex-col items-center justify-center bg-primary-container/20 rounded-xl py-2 px-0 shadow-[0_0_15px_rgba(255,140,0,0.3)] active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/smart-basket.html'">
+<button aria-current="page" class="flex flex-col items-center justify-center bg-primary-container/20 rounded-xl py-2 px-0 shadow-[0_0_15px_rgba(255,140,0,0.3)] active:scale-95 transition-transform text-on-surface flex-1 min-w-0" onclick="location.href='/basket.html'">
 <span class="material-symbols-outlined mb-1" data-icon="shopping_basket" style="font-variation-settings: 'FILL' 1;">shopping_basket</span>
 <span class="text-[10px] leading-4 truncate max-w-full tracking-normal font-semibold">Basket</span>
 </button>
@@ -614,6 +619,9 @@
           itemName: name,
           productTitle: p ? p.title : null,
           storeName: p ? p.store : null,
+          supplierId: p ? p.supplierId : null,
+          productId: p ? p.productId : null,
+          priceCheckedAt: p ? s.priceCheckedAt : null,
           price: p ? p.price : null,
           link: p ? p.link : null,
           thumbnail: p ? p.thumbnail : null,
@@ -695,7 +703,7 @@
     const active = items.filter(i => !i.purchased_at);
     const bought = items.filter(i => i.purchased_at).slice(0, 5);
     const priced = active.filter(i => i.price != null);
-    const total = priced.reduce((sum, i) => sum + Number(i.price), 0);
+    const total = priced.reduce((sum, i) => sum + Number(i.price) * (Number(i.quantity) || 1), 0);
     document.getElementById('listTotal').textContent = active.length
       ? active.length + (active.length === 1 ? ' item' : ' items') + (priced.length ? ' · ~' + formatZAR(total) : '')
       : '';
@@ -712,26 +720,22 @@
 
   function groceryRow(item, bought) {
     const li = el('li', 'flex items-center gap-3 py-2 border-b border-glass-stroke/50 last:border-b-0');
-    const box = el('input', 'w-5 h-5 rounded bg-transparent border-glass-stroke text-primary focus:ring-primary shrink-0');
-    box.type = 'checkbox';
-    box.checked = bought;
-    box.id = 'gl-' + item.id;
-    box.addEventListener('change', () => setBought(item, box.checked, box));
-    const label = el('label', 'flex-1 min-w-0 cursor-pointer');
-    label.htmlFor = box.id;
-    label.appendChild(el('span', 'block text-on-surface font-body-md' + (bought ? ' line-through opacity-60' : ''), item.item_name));
+    const label = el('div', 'flex-1 min-w-0');
+    label.appendChild(el('span', 'block text-on-surface font-body-md' + (bought ? ' line-through opacity-60' : ''),
+      (Number(item.quantity) > 1 ? item.quantity + ' x ' : '') + item.item_name));
     const detail = [];
     if (item.price != null) detail.push(formatZAR(item.price));
     if (item.store_name) detail.push(item.store_name);
     if (detail.length) label.appendChild(el('span', 'block text-on-surface-variant text-xs', detail.join(' at ')));
-    const remove = el('button', 'text-on-surface-variant hover:text-error w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 shrink-0 sb-focusable');
-    remove.type = 'button';
-    remove.setAttribute('aria-label', 'Remove ' + item.item_name + ' from list');
-    remove.appendChild(icon('delete', 'text-[18px]'));
-    remove.addEventListener('click', () => removeItem(item));
-    li.appendChild(box);
     li.appendChild(label);
-    li.appendChild(remove);
+    if (!bought) {
+      const remove = el('button', 'text-on-surface-variant hover:text-error w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 shrink-0 sb-focusable');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', 'Remove ' + item.item_name + ' from basket');
+      remove.appendChild(icon('delete', 'text-[18px]'));
+      remove.addEventListener('click', () => removeItem(item));
+      li.appendChild(remove);
+    }
     return li;
   }
 

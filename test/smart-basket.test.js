@@ -4,6 +4,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const sb = require("../smart-basket");
+const { mapShoppingResult } = require("../shopping-results");
+
+// A cached result exactly as the app stores real SerpAPI data.
+const real = (title, price, source, extra = {}) =>
+  mapShoppingResult({ product_id: "p-" + title.length + "-" + price, title, extracted_price: price, price: "R " + price, source, product_link: "https://www.google.com/search?prds=catalogid:" + price, thumbnail: "https://img.example/" + price, ...extra });
 
 const NOW = new Date("2026-09-24T12:00:00Z");
 const daysAgo = n => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000);
@@ -51,7 +56,7 @@ function createFakeStore(seed = {}) {
       if (data.remainingBudget == null) return null;
       const reserved = data.list
         .filter(r => !r.purchased_at)
-        .reduce((sum, row) => sum + (Number(row.price) || 0), 0);
+        .reduce((sum, row) => sum + (Number(row.price) || 0) * (Number(row.quantity) || 1), 0);
       return data.remainingBudget - reserved;
     },
     async findActiveListItem(userId, itemKey) {
@@ -62,14 +67,21 @@ function createFakeStore(seed = {}) {
       if (data.list.some(r => r.user_id === userId && r.item_key === item.itemKey && !r.purchased_at)) {
         throw Object.assign(new Error("duplicate key"), { code: "23505" });
       }
-      const row = { id: data.nextId++, user_id: userId, item_name: item.itemName, item_key: item.itemKey, store_name: item.storeName, price: item.price, purchased_at: null };
+      const row = { id: data.nextId++, user_id: userId, item_name: item.itemName, item_key: item.itemKey, supplier_id: item.supplierId ?? null,
+        store_name: item.storeName, price: item.price, quantity: item.quantity ?? 1, unit: item.unit ?? null, category: item.category ?? null, purchased_at: null };
       data.list.push(row);
       return row;
     },
-    async updateListItemPrice(userId, id, item) {
+    async mergeListItem(userId, id, m) {
       const row = data.list.find(r => r.id === id && r.user_id === userId);
-      Object.assign(row, { store_name: item.storeName, price: item.price });
+      const map = { supplierId: "supplier_id", storeName: "store_name", price: "price", productTitle: "product_title", link: "link", thumbnail: "thumbnail", unit: "unit", quantity: "quantity" };
+      for (const [k, col] of Object.entries(map)) if (k in m) row[col] = m[k] ?? null;
       return row;
+    },
+    async setQuantity(userId, id, quantity) {
+      const row = data.list.find(r => r.id === Number(id) && r.user_id === userId && !r.purchased_at);
+      if (row) row.quantity = quantity;
+      return row || null;
     },
     async setPurchased(userId, id, purchased) {
       const row = data.list.find(r => r.id === Number(id) && r.user_id === userId);
@@ -150,20 +162,21 @@ test("filters hidden items, items skipped within the cooldown, and items already
   assert.deepEqual(out.map(c => c.itemKey), ["eggs", "pasta"]);
 });
 
-test("new users get popular terms, then staples, never duplicates", () => {
+test("new users only get terms other students really searched for - never made-up items", () => {
   const { suggestions, personalised } = sb.composeSuggestions({
     personal: [],
-    popular: [{ name: "Rice" }, { name: "Two minute noodles" }],
+    popular: [{ name: "Rice" }, { name: "Two minute noodles" }, { name: "rice" }],
     now: NOW,
     limit: 5,
   });
   assert.equal(personalised, false);
-  assert.equal(suggestions.length, 5);
-  assert.deepEqual(suggestions.slice(0, 2).map(s => s.source), ["popular", "popular"]);
-  assert.ok(suggestions.slice(2).every(s => s.source === "staple"));
-  const keys = suggestions.map(s => s.itemKey);
-  assert.equal(new Set(keys).size, keys.length);
-  assert.ok(!keys.slice(2).includes("rice"));
+  assert.deepEqual(suggestions.map(s => [s.name, s.source]), [["Rice", "popular"], ["Two minute noodles", "popular"]]);
+});
+
+test("with no real activity anywhere, there are no suggestions (the page shows an empty state)", () => {
+  const { suggestions } = sb.composeSuggestions({ personal: [], popular: [], now: NOW });
+  assert.deepEqual(suggestions, []);
+  assert.equal(sb.STAPLE_ITEMS, undefined, "no hard-coded staple list");
 });
 
 test("users with enough history get only personal suggestions", () => {
@@ -176,6 +189,7 @@ test("users with enough history get only personal suggestions", () => {
 test("fallback suggestions also respect hidden items", () => {
   const { suggestions } = sb.composeSuggestions({
     personal: [],
+    popular: [{ name: "Eggs" }, { name: "Milk" }],
     states: [{ item_key: "eggs", status: "hidden" }],
     now: NOW,
     limit: 20,
@@ -244,10 +258,10 @@ test("pickCheapest returns null rather than inventing a price", () => {
 
 test("priceItem uses the cache, limits live lookups, and never guesses", async () => {
   const store = createFakeStore({
-    cache: { "durban:rice": { results: [{ title: "Rice 2kg", extracted_price: 40, source: "Spar" }], fetchedAt: daysAgo(0.5) } },
+    cache: { [sb.priceCacheKey("Rice")]: { results: [real("Rice 2kg", 40, "Spar")], fetchedAt: daysAgo(0.5) } },
   });
   let liveCalls = 0;
-  const fetchShopping = async () => { liveCalls++; return [{ title: "Pasta 500g", extracted_price: 18, source: "Boxer" }]; };
+  const fetchShopping = async () => { liveCalls++; return [real("Pasta 500g", 18, "Boxer")]; };
   const budget = { live: 1 };
   const ctx = { store, fetchShopping, specials: [], budget, now: NOW };
 
@@ -258,7 +272,8 @@ test("priceItem uses the cache, limits live lookups, and never guesses", async (
   assert.equal(liveCalls, 1);
   assert.equal(rice.price.price, 40);
   assert.equal(pasta.price.store, "Boxer");
-  assert.ok(store.data.cache.has("durban:pasta"));
+  assert.ok(store.data.cache.has(sb.priceCacheKey("Pasta")));
+  assert.equal(rice.price.store, "SPAR"); // standard supplier name
   assert.equal(eggs.price, null);
   assert.equal(eggs.priceStatus, "not_checked");
 });
@@ -284,14 +299,57 @@ test("swipe right adds to the grocery list and removes the card from suggestions
   assert.ok(!suggestions.some(s => s.itemKey === "rice"));
 });
 
-test("adding an item already on the list doesn't duplicate it, but refreshes its price", async () => {
+test("adding the same product from the same shop increases the quantity", async () => {
+  const store = createFakeStore();
+  await sb.addItemToList(store, 1, { itemName: "Brown Bread", price: 18, storeName: "Spar", quantity: 2 });
+  const again = await sb.addItemToList(store, 1, { itemName: "brown  bread!", price: 17.5, supplierId: "spar" });
+  assert.equal(again.alreadyExisted, true);
+  assert.equal(again.merge, "quantity");
+  assert.equal(store.data.list.length, 1);
+  assert.equal(store.data.list[0].quantity, 3);
+  assert.equal(store.data.list[0].price, 17.5, "latest price kept");
+});
+
+test("adding the same product from another shop switches shop and price, keeping one line", async () => {
   const store = createFakeStore();
   await sb.addItemToList(store, 1, { itemName: "Brown Bread", price: 18, storeName: "Spar" });
-  const again = await sb.addItemToList(store, 1, { itemName: "brown  bread!", price: 16.5, storeName: "Shoprite" });
-  assert.equal(again.alreadyExisted, true);
+  const again = await sb.addItemToList(store, 1, { itemName: "Brown bread", price: 16.5, storeName: "Shoprite" });
+  assert.equal(again.merge, "switched");
   assert.equal(store.data.list.length, 1);
-  assert.equal(store.data.list[0].price, 16.5);
   assert.equal(store.data.list[0].store_name, "Shoprite");
+  assert.equal(store.data.list[0].supplier_id, "shoprite");
+  assert.equal(store.data.list[0].price, 16.5);
+  assert.equal(store.data.list[0].quantity, 2);
+});
+
+test("quantity is capped at 99 when merging", async () => {
+  const store = createFakeStore({ remainingBudget: null });
+  await sb.addItemToList(store, 1, { itemName: "Eggs", quantity: 98 });
+  await sb.addItemToList(store, 1, { itemName: "Eggs", quantity: 5 });
+  assert.equal(store.data.list[0].quantity, 99);
+});
+
+test("basket input is validated: quantity, approved shops, sensible defaults", async () => {
+  const store = createFakeStore({ remainingBudget: null });
+  for (const bad of [{ itemName: "Rice", quantity: 0 }, { itemName: "Rice", quantity: 1.5 }, { itemName: "Rice", quantity: 100 },
+    { itemName: "Rice", storeName: "Desertcart.ae" }, { itemName: "Rice", supplierId: "nope" }]) {
+    await assert.rejects(sb.addItemToList(store, 1, bad), { status: 400 }, JSON.stringify(bad));
+  }
+  const { item } = await sb.addItemToList(store, 1, { itemName: "Tastic Rice", productTitle: "Tastic Long Grain Rice 2kg", storeName: "PnP" });
+  assert.equal(item.store_name, "Pick n Pay");
+  assert.equal(item.unit, "2kg");
+  assert.equal(item.category, "Pantry");
+  assert.equal(item.quantity, 1);
+});
+
+test("quantity can be changed on basket items but not on bought ones", async () => {
+  const store = createFakeStore({ remainingBudget: null });
+  const { item } = await sb.addItemToList(store, 1, { itemName: "Milk" });
+  assert.equal((await sb.setItemQuantity(store, 1, item.id, 4)).quantity, 4);
+  await assert.rejects(sb.setItemQuantity(store, 1, item.id, 0), { status: 400 });
+  await store.setPurchased(1, item.id, true);
+  assert.equal(await sb.setItemQuantity(store, 1, item.id, 2), null);
+  assert.equal(await sb.setItemQuantity(store, 2, item.id, 2), null, "other users can't change it");
 });
 
 test("adding a priced item cannot exceed the remaining budget", async () => {
@@ -302,6 +360,25 @@ test("adding a priced item cannot exceed the remaining budget", async () => {
     { status: 409 },
   );
   assert.equal(store.data.list.length, 1);
+});
+
+test("adding multiple units checks their full cost against the remaining budget", async () => {
+  const store = createFakeStore({ remainingBudget: 25 });
+  await assert.rejects(
+    sb.addItemToList(store, 1, { itemName: "Rice", price: 10, quantity: 3 }),
+    { status: 409 },
+  );
+  assert.equal(store.data.list.length, 0);
+});
+
+test("merging quantity checks the updated total against the remaining budget", async () => {
+  const store = createFakeStore({ remainingBudget: 25 });
+  await sb.addItemToList(store, 1, { itemName: "Rice", price: 10, quantity: 2 });
+  await assert.rejects(
+    sb.addItemToList(store, 1, { itemName: "Rice", price: 10, quantity: 2 }),
+    { status: 409 },
+  );
+  assert.equal(store.data.list[0].quantity, 2);
 });
 
 test("repricing an existing item cannot exceed the remaining budget", async () => {
@@ -464,12 +541,12 @@ test("grocery list routes accept numeric ids and 404 anything else", async () =>
 // ---------------------------------------------------------------
 // South African retailers and price outliers
 // ---------------------------------------------------------------
-test("recognises South African retail chains by store name", () => {
+test("only approved suppliers count (see suppliers.test.js for the full list)", () => {
   for (const s of ["Shoprite", "Checkers Sixty60", "Pick n Pay Online", "makro.co.za", "SPAR", "Food Lover's Market", "Dis-Chem", "Woolworths"]) {
-    assert.ok(sb.isSaRetailer(s), s);
+    assert.ok(sb.matchSupplier(s), s);
   }
-  for (const s of ["Musafir Cash & Carry", "Desertcart.ae", "Sparkle Deals", "Takealot"]) {
-    assert.ok(!sb.isSaRetailer(s), s);
+  for (const s of ["Musafir Cash & Carry", "Desertcart.ae", "Sparkle Deals", "Takealot", "IndiaBazaar.co.za"]) {
+    assert.equal(sb.matchSupplier(s), null, s);
   }
 });
 
@@ -484,7 +561,8 @@ test("drops a listing priced far below the others (e.g. R0.90 rice)", () => {
   });
   const best = sb.pickCheapest("rice", offers);
   assert.equal(best.price, 8.95);
-  assert.equal(best.store, "makro.co.za");
+  assert.equal(best.store, "Makro"); // shown under the supplier's standard name
+  assert.equal(best.supplierId, "makro");
 });
 
 test("brown bread: R5 outlier is ignored and a Shoprite price wins over other stores", () => {
@@ -526,10 +604,29 @@ test("never falls back to foreign shops or non-grocery listings", () => {
   assert.equal(sb.pickCheapest("pilchards", offers), null);
 });
 
-test("South African .co.za online shops count as SA retailers", () => {
-  assert.ok(sb.isSaRetailer("IndiaBazaar.co.za"));
-  const best = sb.pickCheapest("rice", sb.toOffers({ shoppingResults: [{ title: "Basmati Rice 1kg", extracted_price: 39, source: "IndiaBazaar.co.za" }] }));
-  assert.equal(best.store, "IndiaBazaar.co.za");
+test("unapproved .co.za shops and marketplaces are not used for prices", () => {
+  const offers = sb.toOffers({ shoppingResults: [
+    { title: "Basmati Rice 1kg", extracted_price: 39, source: "IndiaBazaar.co.za" },
+    { title: "Basmati Rice 1kg", extracted_price: 35, source: "amazon.co.za" },
+  ] });
+  assert.equal(sb.pickCheapest("rice", offers), null);
+});
+
+test("with a nearby filter, only suppliers inside the radius are compared", () => {
+  const offers = sb.toOffers({ shoppingResults: [
+    { title: "Tastic Rice 2kg", extracted_price: 39.99, source: "Makro" },
+    { title: "Tastic Rice 2kg", extracted_price: 44.99, source: "Shoprite" },
+    { title: "Tastic Rice 2kg", extracted_price: 46.99, source: "Checkers" },
+  ] });
+  const best = sb.pickCheapest("rice", offers, { nearbySupplierIds: new Set(["shoprite", "checkers"]) });
+  assert.equal(best.store, "Shoprite");
+  assert.deepEqual(best.nextCheapest, { store: "Checkers", price: 46.99 });
+  assert.equal(sb.pickCheapest("rice", offers, { nearbySupplierIds: new Set() }), null);
+});
+
+test("product links come from SerpAPI's product_link", () => {
+  const [offer] = sb.toOffers({ shoppingResults: [{ title: "Rice", extracted_price: 20, source: "Shoprite", product_link: "https://www.google.com/search?ibp=oshop&prds=catalogid:1" }] });
+  assert.match(offer.link, /catalogid:1/);
 });
 
 test("outlier check compares against the next cheapest SA listing", () => {
@@ -561,4 +658,55 @@ test("titleMatches copes with run-together words but not short prefixes", () => 
   assert.ok(sb.titleMatches("baked beans", "Baked Beansin Tomato Sauce 400G"));
   assert.ok(!sb.titleMatches("eggs", "Fresh Eggplant 1kg"));
   assert.ok(!sb.titleMatches("rice", "Best price on pasta"));
+});
+
+// ---------------------------------------------------------------
+// Real-data cache rules
+// ---------------------------------------------------------------
+test("a shown price is exactly the cached real listing: same product link, image and shop", async () => {
+  const listing = real("Tastic Rice 2kg", 39.99, "Checkers Sixty60");
+  const store = createFakeStore({ cache: { [sb.priceCacheKey("Rice")]: { results: [listing], fetchedAt: daysAgo(0.1) } } });
+  const out = await sb.priceItem("Rice", { store, fetchShopping: async () => [], specials: [], budget: { live: 0 }, now: NOW });
+  assert.equal(out.priceStatus, "ok");
+  assert.equal(out.price.price, listing.extracted_price);
+  assert.equal(out.price.link, listing.link);
+  assert.equal(out.price.thumbnail, listing.thumbnail);
+  assert.equal(out.price.supplierId, "checkers");
+  assert.equal(new Date(out.priceCheckedAt).getTime(), daysAgo(0.1).getTime(), "checked time comes from the cache entry");
+});
+
+test("an expired price is never shown - it is fetched again, or reported as not checked", async () => {
+  const cache = { [sb.priceCacheKey("Rice")]: { results: [real("Rice 2kg", 40, "Spar")], fetchedAt: daysAgo(2) } };
+  const noQuota = await sb.priceItem("Rice", { store: createFakeStore({ cache }), fetchShopping: async () => { throw new Error("should not be called"); }, specials: [], budget: { live: 0 }, now: NOW });
+  assert.equal(noQuota.price, null);
+  assert.equal(noQuota.priceStatus, "not_checked");
+
+  const failing = await sb.priceItem("Rice", { store: createFakeStore({ cache }), fetchShopping: async () => { throw new Error("SerpAPI down"); }, specials: [], budget: { live: 1 }, now: NOW });
+  assert.equal(failing.price, null, "old price not used when the live check fails");
+  assert.equal(failing.priceStatus, "error");
+
+  const store = createFakeStore({ cache });
+  const refreshed = await sb.priceItem("Rice", { store, fetchShopping: async () => [real("Rice 2kg", 42.5, "Spar")], specials: [], budget: { live: 1 }, now: NOW });
+  assert.equal(refreshed.price.price, 42.5);
+  assert.equal(store.data.cache.get(sb.priceCacheKey("Rice")).results[0].extracted_price, 42.5, "cache replaced with the fresh data");
+});
+
+test("old-format cache entries (no product id / availability) are ignored and replaced", async () => {
+  const legacy = { results: [{ title: "Rice 2kg", extracted_price: 1, source: "Spar" }], fetchedAt: daysAgo(0.1) };
+  const store = createFakeStore({ cache: { [sb.priceCacheKey("Rice")]: legacy } });
+  const out = await sb.priceItem("Rice", { store, fetchShopping: async () => [real("Rice 2kg", 41, "Spar")], specials: [], budget: { live: 1 }, now: NOW });
+  assert.equal(out.price.price, 41);
+});
+
+test("out-of-stock listings are never the cheapest", () => {
+  const offers = sb.toOffers({ shoppingResults: [
+    real("Rice 2kg", 30, "Shoprite", { tag: "Out of stock" }),
+    real("Rice 2kg", 35, "Checkers"),
+  ] });
+  // pickCheapest works on offers; the Shop/Basket clean results first:
+  const { cleanShoppingResults } = require("../suppliers");
+  const cleaned = cleanShoppingResults([real("Rice 2kg", 30, "Shoprite", { tag: "Out of stock" }), real("Rice 2kg", 35, "Checkers")]);
+  assert.deepEqual(cleaned.results.map(r => r.supplierId), ["checkers"]);
+  assert.equal(cleaned.rejected.out_of_stock, 1);
+  assert.ok(offers.length === 2);
 });

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduBudget AI - My Basket</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e2e2e2",
+                        "primary-fixed": "#ffdcc3",
+                        "on-tertiary": "#00344c",
+                        "surface-container-lowest": "#141416",
+                        "surface-tint": "#ffb77d",
+                        "on-tertiary-fixed": "#001e2e",
+                        "surface-dim": "#17171A",
+                        "outline-variant": "#564334",
+                        "surface-container-low": "#1b1b1b",
+                        "on-primary": "#4d2600",
+                        "on-tertiary-fixed-variant": "#004c6c",
+                        "on-error": "#690005",
+                        "surface-variant": "#353535",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "primary": "#ffb77d",
+                        "glass-stroke": "rgba(255, 255, 255, 0.15)",
+                        "on-error-container": "#ffdad6",
+                        "background": "#1C1C1E",
+                        "on-tertiary-container": "#004360",
+                        "surface-container": "#1f1f1f",
+                        "tertiary-fixed-dim": "#85cfff",
+                        "error": "#ffb4ab",
+                        "on-primary-container": "#623200",
+                        "secondary-fixed": "#e2e2e2",
+                        "primary-fixed-dim": "#ffb77d",
+                        "accent-glow": "rgba(255, 140, 0, 0.2)",
+                        "primary-container": "#ff8c00",
+                        "inverse-primary": "#904d00",
+                        "inverse-surface": "#e2e2e2",
+                        "tertiary-container": "#00b5fc",
+                        "error-container": "#93000a",
+                        "on-surface-variant": "#ddc1ae",
+                        "surface-bright": "#393939",
+                        "secondary-container": "#454747",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-secondary": "#2f3131",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "surface-container-highest": "#353535",
+                        "glass-surface": "rgba(255, 255, 255, 0.05)",
+                        "surface-container-high": "#2a2a2a",
+                        "surface": "#1C1C1E",
+                        "tertiary-fixed": "#c7e7ff",
+                        "secondary": "#c6c6c7",
+                        "tertiary": "#85cfff",
+                        "on-primary-fixed-variant": "#6e3900",
+                        "on-secondary-container": "#b4b5b5",
+                        "on-surface": "#e2e2e2",
+                        "on-primary-fixed": "#2f1500",
+                        "outline": "#a48c7a",
+                        "inverse-on-surface": "#303030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "unit": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-padding": "32px",
+                        "safe": "env(safe-area-inset-bottom)"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-md": ["Plus Jakarta Sans", "sans-serif"],
+                        "label-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-xl": ["Plus Jakarta Sans", "sans-serif"],
+                        "label-sm": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #1C1C1E;
+            color: #e2e2e2;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .glow-accent {
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.2);
+        }
+
+        .glass-input:focus {
+            border-color: #ffb77d;
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.2);
+            outline: none;
+        }
+    </style>
+<style>
+        .bk-focusable:focus-visible { outline: 2px solid #ffb77d; outline-offset: 2px; }
+        .bk-check { width: 24px; height: 24px; border-radius: 8px; cursor: pointer; }
+        .bk-step { width: 36px; height: 36px; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+    </style>
+</head>
+<body class="min-h-screen pb-24 md:pb-0 flex">
+<!-- Desktop Sidebar -->
+<aside class="hidden md:flex flex-col w-64 border-r border-glass-stroke bg-surface-container-lowest/80 backdrop-blur-3xl sticky top-0 h-screen p-6 z-40">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface mb-10 pl-2">EduBudget AI</h1>
+<nav class="flex-1 space-y-4">
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/dashboard.html">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+<span class="font-label-lg">Bank</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/search.html">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-lg">Shop</span>
+</a>
+<a aria-current="page" class="flex items-center gap-4 bg-primary-container/20 text-on-surface p-3 rounded-xl shadow-[0_0_15px_rgba(255,140,0,0.3)] transition-transform" href="/basket.html">
+<span class="material-symbols-outlined" data-icon="shopping_basket" style="font-variation-settings: 'FILL' 1;">shopping_basket</span>
+<span class="font-label-lg">Basket</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/favourites.html">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="font-label-lg">Favourites</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/analytics.html">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-label-lg">Budget</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface p-3 rounded-xl hover:bg-white/5 transition-colors" href="/favorites.html">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-lg">Profile</span>
+</a>
+</nav>
+</aside>
+<div class="flex-1 flex flex-col min-w-0">
+<!-- TopAppBar -->
+<header class="bg-glass-surface text-primary sticky top-0 backdrop-blur-3xl border-b border-glass-stroke flex justify-between items-center w-full px-margin-mobile h-16 z-50 md:px-margin-desktop md:justify-end">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface md:hidden">EduBudget AI</h1>
+<div class="flex items-center gap-4">
+<a class="w-8 h-8 rounded-full overflow-hidden border border-glass-stroke flex items-center justify-center text-on-surface" href="/favorites.html" aria-label="Profile">
+<span class="material-symbols-outlined">person</span>
+</a>
+</div>
+</header>
+<main class="max-w-5xl w-full mx-auto px-margin-mobile md:px-margin-desktop py-gutter flex-1">
+<!-- Basket / Smart suggestions tabs -->
+<nav aria-label="Basket sections" class="flex gap-2 mb-5">
+<a aria-current="page" class="px-4 py-2 rounded-full bg-primary-container/20 border border-primary/30 text-primary font-label-lg bk-focusable" href="/basket.html">My basket</a>
+<a class="px-4 py-2 rounded-full bg-glass-surface border border-glass-stroke text-on-surface font-label-lg hover:bg-white/5 bk-focusable" href="/smart-basket.html">Smart suggestions</a>
+</nav>
+<div class="flex flex-wrap items-end justify-between gap-4 mb-5">
+<div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-surface">My Basket</h2>
+<p class="font-body-md text-on-surface-variant mt-1 text-sm md:text-base">Your grocery list. Tick what you bought, then confirm to deduct it from your Budget Bank.</p>
+</div>
+<button class="px-4 py-2 rounded-xl border border-glass-stroke text-primary font-label-lg hover:bg-white/5 bk-focusable flex items-center gap-2 disabled:opacity-50" id="pdfBtn" type="button">
+<span class="material-symbols-outlined text-[18px]">picture_as_pdf</span><span id="pdfBtnLabel">Download PDF</span>
+</button>
+</div>
+
+<section aria-label="Budget Bank" class="eb-budget mb-5" id="budgetBar"><p class="text-on-surface-variant">Loading your Budget Bank...</p></section>
+
+<form class="flex gap-2 mb-5" id="addItemForm">
+<label class="sr-only" for="addItemInput">Add an item to your basket</label>
+<input class="glass-input flex-1 min-w-0 rounded-xl px-4 py-3 bg-white/5 border border-glass-stroke text-on-surface" id="addItemInput" maxlength="120" placeholder="Add an item, e.g. Eggs" type="text"/>
+<button class="px-5 py-3 rounded-xl bg-primary text-on-primary font-label-lg bk-focusable" type="submit">Add</button>
+</form>
+
+<div class="hidden glass-panel rounded-2xl p-4 mb-3 flex flex-wrap items-center justify-between gap-3" id="stalePrices" role="status">
+<p class="text-sm text-on-surface" id="stalePricesText"></p>
+<button class="px-4 py-2 rounded-xl border border-glass-stroke text-primary font-label-lg hover:bg-white/5 bk-focusable disabled:opacity-50" id="refreshPricesBtn" type="button">Refresh prices</button>
+</div>
+<ul class="flex flex-col gap-3" id="basketList" aria-label="Items in your basket">
+<li class="glass-panel rounded-2xl p-6 text-on-surface-variant">Loading your basket...</li>
+</ul>
+
+<!-- Totals + Confirm purchase -->
+<section class="glass-panel rounded-2xl p-5 mt-5 hidden" id="checkoutBox" aria-labelledby="checkoutHeading">
+<div class="flex flex-wrap items-center justify-between gap-3">
+<div>
+<h3 class="font-label-lg text-on-surface" id="checkoutHeading">Selected for purchase</h3>
+<p class="text-on-surface-variant text-sm" id="selectedSummary"></p>
+</div>
+<button class="px-5 py-3 rounded-xl bg-primary text-on-primary font-label-lg bk-focusable disabled:opacity-50" id="startCheckoutBtn" type="button">Confirm purchase</button>
+</div>
+<div class="hidden mt-4 pt-4 border-t border-glass-stroke" id="confirmPanel">
+<p class="text-on-surface mb-3">Enter what you paid (check your till slip). It will be deducted from your Budget Bank and the ticked items move to <strong>Bought</strong>.</p>
+<p class="text-error text-sm mb-3 hidden" id="checkoutError" role="alert"></p>
+<div class="flex flex-wrap items-end gap-3">
+<label class="flex flex-col gap-1 text-sm text-on-surface-variant" for="amountPaid">Amount paid (R)
+<input class="glass-input rounded-xl px-4 py-3 bg-white/5 border border-glass-stroke text-on-surface w-40" id="amountPaid" inputmode="decimal" min="0.01" step="0.01" type="number"/>
+</label>
+<p class="text-sm text-on-surface-variant flex-1 min-w-[12rem]" id="afterPurchase" aria-live="polite"></p>
+</div>
+<div class="flex gap-3 mt-4">
+<button class="px-5 py-3 rounded-xl bg-primary text-on-primary font-label-lg bk-focusable disabled:opacity-50" id="confirmBtn" type="button">Confirm and deduct</button>
+<button class="px-5 py-3 rounded-xl border border-glass-stroke text-on-surface font-label-lg bk-focusable" id="cancelCheckoutBtn" type="button">Cancel</button>
+</div>
+</div>
+</section>
+
+<details class="glass-panel rounded-2xl p-5 mt-5" id="boughtPanel">
+<summary class="font-label-lg text-on-surface cursor-pointer bk-focusable rounded">Bought recently <span id="boughtCount"></span></summary>
+<ul class="flex flex-col mt-3" id="boughtList"></ul>
+</details>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden bg-glass-surface text-primary font-label-sm text-label-sm fixed bottom-0 w-full rounded-t-xl backdrop-blur-3xl border-t border-glass-stroke left-0 z-50 flex justify-around items-center px-1 py-2 pb-safe bg-surface-container-lowest">
+<button class="flex flex-1 min-w-0 flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface" onclick="location.href='/dashboard.html'">
+<span class="material-symbols-outlined mb-1" data-icon="account_balance">account_balance</span>
+<span class="text-[10px] tracking-normal font-semibold">Bank</span>
+</button>
+<button class="flex flex-1 min-w-0 flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface" onclick="location.href='/search.html'">
+<span class="material-symbols-outlined mb-1" data-icon="shopping_bag">shopping_bag</span>
+<span class="text-[10px] tracking-normal font-semibold">Shop</span>
+</button>
+<button aria-current="page" class="flex flex-1 min-w-0 flex-col items-center justify-center bg-primary-container/20 rounded-xl py-2 px-0 shadow-[0_0_15px_rgba(255,140,0,0.3)] active:scale-95 transition-transform text-on-surface" onclick="location.href='/basket.html'">
+<span class="material-symbols-outlined mb-1" data-icon="shopping_basket" style="font-variation-settings: 'FILL' 1;">shopping_basket</span>
+<span class="text-[10px] tracking-normal font-semibold">Basket</span>
+</button>
+<button class="flex flex-1 min-w-0 flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface" onclick="location.href='/favourites.html'">
+<span class="material-symbols-outlined mb-1" data-icon="favorite">favorite</span>
+<span class="text-[10px] tracking-normal font-semibold">Favourites</span>
+</button>
+<button class="flex flex-1 min-w-0 flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface" onclick="location.href='/analytics.html'">
+<span class="material-symbols-outlined mb-1" data-icon="insights">insights</span>
+<span class="text-[10px] tracking-normal font-semibold">Budget</span>
+</button>
+<button class="flex flex-1 min-w-0 flex-col items-center justify-center py-2 px-0 hover:bg-white/5 transition-colors active:scale-95 transition-transform text-on-surface" onclick="location.href='/favorites.html'">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="text-[10px] tracking-normal font-semibold">Profile</span>
+</button>
+</nav>
+<script src="/shared.js"></script>
+<script src="/grocery-pdf.js"></script>
+<script>
+  // Product names and stores come from third-party listings, so all text is
+  // inserted with textContent (never innerHTML).
+  const JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  let items = [];           // all basket rows from /api/basket
+  let budget = null;
+  let unselected = new Set(); // ids the student unticked (not bought this time)
+  let checkoutRef = null;   // one reference per purchase attempt (safe retries)
+  let busy = false;
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+  const icon = (name, extra) => el('span', 'material-symbols-outlined' + (extra ? ' ' + extra : ''), name);
+  const safeLink = url => (typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null);
+  const active = () => items.filter(i => !i.purchased_at);
+  const priceOf = i => (i.price != null && isFinite(Number(i.price)) ? Number(i.price) : null);
+  const lineTotal = i => (priceOf(i) != null ? Math.round(priceOf(i) * (Number(i.quantity) || 1) * 100) / 100 : null);
+  const newRef = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'ref-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10));
+
+  // ---------- Rendering ----------
+  function itemRow(item) {
+    const li = el('li', 'glass-panel rounded-2xl p-4 flex gap-3 items-start');
+    const selected = !unselected.has(item.id);
+
+    const box = el('input', 'bk-check bg-transparent border-glass-stroke text-primary focus:ring-primary shrink-0 mt-1');
+    box.type = 'checkbox';
+    box.checked = selected;
+    box.setAttribute('aria-label', 'Bought ' + item.item_name + ' (include in this purchase)');
+    box.addEventListener('change', () => {
+      if (box.checked) unselected.delete(item.id); else unselected.add(item.id);
+      renderCheckout();
+    });
+    li.appendChild(box);
+
+    const media = el('div', 'w-14 h-14 rounded-xl bg-surface-container-high overflow-hidden flex items-center justify-center shrink-0');
+    const thumb = safeLink(item.thumbnail);
+    if (thumb) {
+      const img = el('img', 'w-full h-full object-cover');
+      img.src = thumb; img.alt = ''; img.loading = 'lazy';
+      img.addEventListener('error', () => { img.remove(); media.appendChild(icon('shopping_basket', 'text-on-surface-variant')); });
+      media.appendChild(img);
+    } else {
+      media.appendChild(icon('shopping_basket', 'text-on-surface-variant'));
+    }
+    li.appendChild(media);
+
+    const body = el('div', 'flex-1 min-w-0');
+    body.appendChild(el('p', 'font-body-md font-bold text-on-surface break-words', item.item_name));
+    const sub = [item.unit, item.category].filter(Boolean).join(' · ');
+    if (item.product_title && item.product_title !== item.item_name) body.appendChild(el('p', 'text-xs text-on-surface-variant line-clamp-2', item.product_title));
+    else if (sub) body.appendChild(el('p', 'text-xs text-on-surface-variant', sub));
+    const price = priceOf(item);
+    body.appendChild(el('p', 'text-sm text-on-surface mt-1',
+      price != null ? formatZAR(price) + ' each' + (item.store_name ? ' at ' + item.store_name : '') : (item.store_name ? item.store_name + ' · ' : '') + 'Price unknown'));
+    const checked = item.price_checked_at ? ebTimeSince(new Date(item.price_checked_at).getTime()) : null;
+    if (item.price_status === 'current' && checked) {
+      body.appendChild(el('p', 'text-xs text-on-surface-variant', 'Price checked ' + checked));
+    } else if (item.price_status === 'stale') {
+      body.appendChild(el('p', 'text-xs text-yellow-300', (checked ? 'Price from ' + checked : 'Price not checked recently') + ' - it may have changed. Tap Refresh prices.'));
+    } else if (item.price_status === 'not_listed') {
+      body.appendChild(el('p', 'text-xs text-error', 'No longer listed at ' + (item.store_name || 'this shop') + ' - compare in the Shop for a current price.'));
+    }
+
+    // Quantity stepper
+    const qtyRow = el('div', 'flex items-center gap-2 mt-2');
+    const minus = el('button', 'bk-step rounded-full border border-glass-stroke text-on-surface flex items-center justify-center hover:bg-white/5 bk-focusable disabled:opacity-40');
+    minus.type = 'button'; minus.setAttribute('aria-label', 'One less ' + item.item_name); minus.appendChild(icon('remove', 'text-[18px]'));
+    minus.disabled = Number(item.quantity) <= 1;
+    minus.addEventListener('click', () => setQuantity(item, Number(item.quantity) - 1));
+    const qty = el('span', 'min-w-[2rem] text-center font-bold text-on-surface', String(item.quantity || 1));
+    qty.setAttribute('aria-live', 'polite');
+    qty.setAttribute('aria-label', 'Quantity ' + (item.quantity || 1));
+    const plus = el('button', 'bk-step rounded-full border border-glass-stroke text-on-surface flex items-center justify-center hover:bg-white/5 bk-focusable disabled:opacity-40');
+    plus.type = 'button'; plus.setAttribute('aria-label', 'One more ' + item.item_name); plus.appendChild(icon('add', 'text-[18px]'));
+    plus.disabled = Number(item.quantity) >= 99;
+    plus.addEventListener('click', () => setQuantity(item, Number(item.quantity) + 1));
+    qtyRow.appendChild(minus); qtyRow.appendChild(qty); qtyRow.appendChild(plus);
+    const total = lineTotal(item);
+    qtyRow.appendChild(el('span', 'ml-auto font-bold text-primary', total != null ? formatZAR(total) : '-'));
+    body.appendChild(qtyRow);
+
+    // Back to the product / shop
+    const links = el('div', 'flex flex-wrap gap-x-4 gap-y-1 mt-2');
+    const link = safeLink(item.link);
+    if (link) {
+      const a = el('a', 'text-primary font-label-sm hover:underline bk-focusable rounded', 'View product');
+      a.href = link; a.target = '_blank'; a.rel = 'noopener';
+      links.appendChild(a);
+    }
+    const shop = el('a', 'text-primary font-label-sm hover:underline bk-focusable rounded', 'Compare in Shop');
+    shop.href = '/search.html?q=' + encodeURIComponent(item.item_name);
+    links.appendChild(shop);
+    body.appendChild(links);
+    li.appendChild(body);
+
+    const remove = el('button', 'w-11 h-11 rounded-full flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-white/5 shrink-0 bk-focusable');
+    remove.type = 'button';
+    remove.setAttribute('aria-label', 'Remove ' + item.item_name + ' from basket');
+    remove.appendChild(icon('delete'));
+    remove.addEventListener('click', () => removeItem(item));
+    li.appendChild(remove);
+    return li;
+  }
+
+  function renderList() {
+    const list = document.getElementById('basketList');
+    list.textContent = '';
+    const act = active();
+    if (!act.length) {
+      const li = el('li', 'glass-panel rounded-2xl p-8 text-center flex flex-col items-center gap-3');
+      li.appendChild(icon('shopping_basket', 'text-5xl text-primary'));
+      li.appendChild(el('p', 'font-body-lg font-bold text-on-surface', 'Your basket is empty'));
+      li.appendChild(el('p', 'text-on-surface-variant', 'Add products from the Shop, your Favourites or Smart suggestions - or type an item above.'));
+      const row = el('div', 'flex flex-wrap justify-center gap-3');
+      [['Go to Shop', '/search.html'], ['Favourites', '/favourites.html'], ['Smart suggestions', '/smart-basket.html']].forEach(([t, h]) => {
+        const a = el('a', 'px-4 py-2 rounded-xl border border-glass-stroke text-primary font-label-lg bk-focusable', t);
+        a.href = h;
+        row.appendChild(a);
+      });
+      li.appendChild(row);
+      list.appendChild(li);
+    } else {
+      act.forEach(i => list.appendChild(itemRow(i)));
+    }
+
+    const bought = items.filter(i => i.purchased_at).slice(0, 20);
+    document.getElementById('boughtCount').textContent = '(' + bought.length + ')';
+    const bl = document.getElementById('boughtList');
+    bl.textContent = '';
+    if (!bought.length) bl.appendChild(el('li', 'text-sm text-on-surface-variant', 'Nothing bought yet.'));
+    bought.forEach(i => {
+      const li = el('li', 'flex items-center justify-between gap-3 py-2 border-b border-glass-stroke/50 last:border-b-0');
+      const t = el('div', 'min-w-0');
+      t.appendChild(el('span', 'block text-on-surface line-through opacity-70', (i.quantity > 1 ? i.quantity + ' x ' : '') + i.item_name));
+      t.appendChild(el('span', 'block text-xs text-on-surface-variant', 'Bought ' + new Date(i.purchased_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) + (i.purchase_id ? ' · deducted from Budget Bank' : '')));
+      li.appendChild(t);
+      const back = el('button', 'text-primary font-label-sm hover:underline bk-focusable rounded shrink-0', 'Buy again');
+      back.type = 'button';
+      back.setAttribute('aria-label', 'Put ' + i.item_name + ' back in your basket');
+      back.addEventListener('click', () => putBack(i));
+      li.appendChild(back);
+      bl.appendChild(li);
+    });
+    renderCheckout();
+  }
+
+  function selectedItems() {
+    return active().filter(i => !unselected.has(i.id));
+  }
+
+  function renderCheckout() {
+    const box = document.getElementById('checkoutBox');
+    const act = active();
+    box.classList.toggle('hidden', act.length === 0);
+    const sel = selectedItems();
+    const priced = sel.filter(i => lineTotal(i) != null);
+    const estimate = Math.round(priced.reduce((a, i) => a + lineTotal(i), 0) * 100) / 100;
+    const unpriced = sel.length - priced.length;
+    document.getElementById('selectedSummary').textContent = sel.length
+      ? `${sel.length} of ${act.length} item${act.length === 1 ? '' : 's'} ticked · estimated ${formatZAR(estimate)}` + (unpriced ? ` (+${unpriced} without a price)` : '')
+      : 'Tick the items you bought to confirm a purchase.';
+    document.getElementById('startCheckoutBtn').disabled = sel.length === 0 || busy;
+    const amount = document.getElementById('amountPaid');
+    if (!document.getElementById('confirmPanel').classList.contains('hidden') && !amount.dataset.touched) amount.value = estimate ? estimate.toFixed(2) : '';
+    updateAfterPurchase();
+    return estimate;
+  }
+
+  function updateAfterPurchase() {
+    const out = document.getElementById('afterPurchase');
+    const amount = Number(document.getElementById('amountPaid').value);
+    const confirm = document.getElementById('confirmBtn');
+    if (!budget) { out.textContent = ''; return; }
+    if (budget.status === 'no_budget') {
+      out.textContent = 'Set your monthly budget on the Profile page first.';
+      confirm.disabled = true;
+      return;
+    }
+    if (!(amount > 0)) { out.textContent = 'Available: ' + formatZAR(budget.available); confirm.disabled = true; return; }
+    const left = Math.round((budget.available - amount) * 100) / 100;
+    if (left < 0) {
+      out.textContent = `That's ${formatZAR(-left)} more than your available ${formatZAR(budget.available)}. Remove items or update your budget.`;
+      out.className = 'text-sm text-error flex-1 min-w-[12rem]';
+      confirm.disabled = true;
+    } else {
+      out.textContent = `Budget Bank after this purchase: ${formatZAR(left)}`;
+      out.className = 'text-sm text-on-surface-variant flex-1 min-w-[12rem]';
+      confirm.disabled = busy;
+    }
+  }
+
+  // ---------- Loading ----------
+  function load() {
+    return loadWithCache('/api/basket', {
+      render: data => {
+        items = data.items || [];
+        const stale = (data.totals && data.totals.stalePriceCount) || 0;
+        document.getElementById('stalePrices').classList.toggle('hidden', !stale);
+        document.getElementById('stalePricesText').textContent = stale
+          ? stale + (stale === 1 ? ' price is' : ' prices are') + ' more than ' + (data.priceFreshHours || 24) + ' hours old or no longer listed. Totals use the saved prices until you refresh.'
+          : '';
+        budget = data.budget;
+        const ids = new Set(items.map(i => i.id));
+        unselected = new Set([...unselected].filter(id => ids.has(id)));
+        renderList();
+      },
+      onError: err => {
+        const list = document.getElementById('basketList');
+        list.textContent = '';
+        const li = el('li', 'glass-panel rounded-2xl p-6 flex flex-col items-start gap-3');
+        li.appendChild(el('p', 'text-error', "Your basket couldn't be loaded: " + err.message));
+        const retry = el('button', 'px-4 py-2 rounded-xl bg-primary text-on-primary font-label-lg bk-focusable', 'Try again');
+        retry.type = 'button';
+        retry.addEventListener('click', load);
+        li.appendChild(retry);
+        list.appendChild(li);
+      },
+    });
+  }
+  window.addEventListener('eb:basket-changed', load);
+
+  // ---------- Actions (instant on screen, rolled back if saving fails) ----------
+  async function setQuantity(item, qty) {
+    if (qty < 1 || qty > 99) return;
+    const before = item.quantity;
+    item.quantity = qty;
+    renderList();
+    try {
+      await apiSend('PUT', '/api/grocery-list/' + item.id, { quantity: qty });
+      window.dispatchEvent(new CustomEvent('eb:basket-changed'));
+    } catch (err) {
+      item.quantity = before;
+      renderList();
+      showToast("Couldn't change the quantity: " + err.message, { error: true });
+    }
+  }
+
+  async function removeItem(item) {
+    const index = items.indexOf(item);
+    items.splice(index, 1);
+    renderList();
+    try {
+      await apiSend('DELETE', '/api/grocery-list/' + item.id);
+      showToast('Removed ' + item.item_name);
+      window.dispatchEvent(new CustomEvent('eb:basket-changed'));
+    } catch (err) {
+      items.splice(index, 0, item);
+      renderList();
+      showToast("Couldn't remove: " + err.message, { error: true });
+    }
+  }
+
+  async function putBack(item) {
+    try {
+      await apiSend('PUT', '/api/grocery-list/' + item.id, { purchased: false });
+      showToast(item.item_name + ' is back in your basket');
+      window.dispatchEvent(new CustomEvent('eb:basket-changed'));
+    } catch (err) {
+      showToast(err.status === 409 ? item.item_name + ' is already in your basket' : "Couldn't put it back: " + err.message, { error: true });
+    }
+  }
+
+  document.getElementById('addItemForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const input = document.getElementById('addItemInput');
+    const itemName = input.value.trim();
+    if (!itemName) return input.focus();
+    try {
+      await addToBasket({ itemName, addedFrom: 'manual' });
+      input.value = '';
+    } catch (err) {
+      showToast("Couldn't add: " + err.message, { error: true });
+    }
+  });
+
+  // Re-checks old prices against real current listings (server-side).
+  document.getElementById('refreshPricesBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('refreshPricesBtn');
+    btn.disabled = true;
+    btn.textContent = 'Checking prices...';
+    try {
+      const { data } = await apiSend('POST', '/api/basket/refresh-prices');
+      const parts = [];
+      if (data.changed) parts.push(data.changed + ' price' + (data.changed === 1 ? '' : 's') + ' updated');
+      if (data.confirmed) parts.push(data.confirmed + ' unchanged');
+      if (data.notListed) parts.push(data.notListed + ' no longer listed');
+      if (data.failed) parts.push(data.failed + " couldn't be checked");
+      if (data.skipped) parts.push(data.skipped + ' left for next time');
+      showToast(parts.length ? 'Prices checked: ' + parts.join(', ') : 'All prices are up to date', { error: !!data.failed && !data.changed && !data.confirmed });
+      window.dispatchEvent(new CustomEvent('eb:basket-changed'));
+    } catch (err) {
+      showToast("Couldn't refresh prices: " + err.message, { error: true });
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Refresh prices';
+    }
+  });
+
+  // ---------- Confirm purchase ----------
+  document.getElementById('startCheckoutBtn').addEventListener('click', () => {
+    checkoutRef = newRef(); // new attempt; retries of this attempt reuse it
+    const amount = document.getElementById('amountPaid');
+    delete amount.dataset.touched;
+    document.getElementById('checkoutError').classList.add('hidden');
+    document.getElementById('confirmPanel').classList.remove('hidden');
+    renderCheckout();
+    amount.focus();
+  });
+  document.getElementById('cancelCheckoutBtn').addEventListener('click', () => {
+    document.getElementById('confirmPanel').classList.add('hidden');
+    checkoutRef = null;
+  });
+  document.getElementById('amountPaid').addEventListener('input', e => {
+    e.target.dataset.touched = '1';
+    updateAfterPurchase();
+  });
+  document.getElementById('confirmBtn').addEventListener('click', async () => {
+    const sel = selectedItems();
+    const amountPaid = document.getElementById('amountPaid').value;
+    const errorBox = document.getElementById('checkoutError');
+    errorBox.classList.add('hidden');
+    if (!sel.length || busy) return;
+    busy = true;
+    const btn = document.getElementById('confirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Confirming...';
+    try {
+      const { data } = await apiSend('POST', '/api/basket/checkout', { itemIds: sel.map(i => i.id), amountPaid, clientRef: checkoutRef });
+      document.getElementById('confirmPanel').classList.add('hidden');
+      checkoutRef = null;
+      showToast(data.duplicate
+        ? 'That purchase was already recorded - nothing extra was deducted.'
+        : `Purchase confirmed: ${formatZAR(data.purchase.amount)} deducted. Budget Bank: ${formatZAR(data.budget.available)} left.`);
+      window.dispatchEvent(new CustomEvent('eb:basket-changed'));
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.remove('hidden');
+      if (err.status === 409) window.dispatchEvent(new CustomEvent('eb:basket-changed'));
+      // Network errors keep the same checkoutRef, so "Confirm" again can't double-charge.
+    } finally {
+      busy = false;
+      btn.textContent = 'Confirm and deduct';
+      updateAfterPurchase();
+    }
+  });
+
+  // ---------- PDF ----------
+  function loadJsPdf() {
+    if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = JSPDF_URL;
+      s.crossOrigin = 'anonymous';
+      s.onload = () => (window.jspdf && window.jspdf.jsPDF ? resolve(window.jspdf.jsPDF) : reject(new Error('PDF tool not available')));
+      s.onerror = () => reject(new Error("The PDF tool couldn't load - check your connection and try again."));
+      document.head.appendChild(s);
+    });
+  }
+
+  document.getElementById('pdfBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('pdfBtn');
+    const label = document.getElementById('pdfBtnLabel');
+    btn.disabled = true;
+    label.textContent = 'Preparing PDF...';
+    try {
+      // Always the latest saved list (this student's items only).
+      const resp = await fetch('/api/basket');
+      if (resp.status === 401) return (window.location.href = '/login.html');
+      if (!resp.ok) throw new Error('Your list could not be loaded.');
+      const data = await resp.json();
+      const JsPDF = await loadJsPdf();
+      const now = new Date();
+      const model = GroceryPdf.buildGroceryDocument(data.items || [], { generatedAt: now, title: 'Grocery list' });
+      GroceryPdf.renderGroceryPdf(model, JsPDF).save(GroceryPdf.fileName(now));
+      showToast(model.empty ? 'Downloaded an empty grocery list' : 'Grocery list downloaded');
+    } catch (err) {
+      showToast(err instanceof TypeError ? "You're offline - the PDF needs a connection." : err.message, { error: true });
+    } finally {
+      btn.disabled = false;
+      label.textContent = 'Download PDF';
+    }
+  });
+
+  (async () => {
+    const user = await requireAuthOrRedirect();
+    if (!user) return;
+    renderBudgetBar(document.getElementById('budgetBar'), { showBasketLink: false });
+    load();
+  })();
+</script>
+</body></html>

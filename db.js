@@ -6,6 +6,7 @@ if (!process.env.DATABASE_URL) {
 
 // Neon's serverless driver runs queries over HTTP - no connection pool to manage.
 const sql = neon(process.env.DATABASE_URL);
+const { CACHE_VERSION } = require("./shopping-results");
 
 // Creates the app's tables if they don't exist yet. Existing tables and their
 // data are left untouched, so user data survives server restarts.
@@ -23,6 +24,14 @@ async function initSchema() {
   `;
   // Safe no-op if the column already exists (older DBs created before this feature).
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS spending_target NUMERIC`;
+  // Shopping area for nearby shops (location.js): typed suburb/postcode or
+  // GPS (only after the student taps "Use my location"), rounded to ~100 m.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_label TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lng DOUBLE PRECISION`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_source TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS search_radius_km INTEGER DEFAULT 15`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS search_history (
@@ -121,6 +130,40 @@ async function initSchema() {
     CREATE UNIQUE INDEX IF NOT EXISTS grocery_list_active_item_idx
     ON grocery_list (user_id, item_key) WHERE purchased_at IS NULL
   `;
+  // BASKET: the grocery list doubles as the basket - quantity, pack size
+  // (unit), aisle category and the approved supplier the price is from.
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS unit TEXT`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS category TEXT`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS supplier_id TEXT`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS purchase_id INTEGER`;
+  // Real listing details kept with each saved price: the SerpAPI product id,
+  // when the price was checked, and whether the listing was still there at
+  // the last refresh ("listed" / "not_listed").
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS product_id TEXT`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS price_checked_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE grocery_list ADD COLUMN IF NOT EXISTS availability TEXT`;
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS product_id TEXT`;
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS supplier_id TEXT`;
+  await sql`ALTER TABLE favourites ADD COLUMN IF NOT EXISTS price_checked_at TIMESTAMPTZ`;
+
+  // BASKET CHECKOUT: one row per confirmed purchase. client_ref is sent by
+  // the page with each "Confirm purchase", so a double tap or a retry after
+  // a dropped connection can never charge the Budget Bank twice.
+  await sql`
+    CREATE TABLE IF NOT EXISTS purchases (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      client_ref TEXT NOT NULL,
+      amount NUMERIC(10,2) NOT NULL CHECK (amount > 0),
+      estimated_total NUMERIC(10,2),
+      item_count INTEGER NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (user_id, client_ref)
+    )
+  `;
+  // Links an automatic budget_log entry to the purchase that created it.
+  await sql`ALTER TABLE budget_log ADD COLUMN IF NOT EXISTS purchase_id INTEGER`;
 
   // SMART BASKET: per-user swipe decisions. 'skipped' hides a suggestion
   // until skipped_until; 'hidden' hides it until the user restores it.
@@ -144,6 +187,31 @@ async function initSchema() {
       query_key TEXT PRIMARY KEY,
       results JSONB NOT NULL,
       fetched_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+
+  // Cache clean-up: results written under older cache keys/formats are never
+  // read again (see shopping-results.js), and anything older than a week is
+  // too old to show, so both are removed. Only cached copies of SerpAPI
+  // data are deleted here - never user data.
+  await sql`
+    DELETE FROM price_cache
+    WHERE query_key NOT LIKE ${CACHE_VERSION + ":%"} OR fetched_at < NOW() - INTERVAL '7 days'
+  `;
+  // Deals keep the real product and supplier ids; week-old deals are removed.
+  await sql`ALTER TABLE trending_deals ADD COLUMN IF NOT EXISTS product_id TEXT`;
+  await sql`ALTER TABLE trending_deals ADD COLUMN IF NOT EXISTS supplier_id TEXT`;
+  await sql`DELETE FROM trending_deals WHERE fetched_at < NOW() - INTERVAL '7 days'`;
+
+  // NEARBY SHOPS: cached branch locations per approved supplier per ~5 km
+  // area (see location.js). Shared, no personal data.
+  await sql`
+    CREATE TABLE IF NOT EXISTS store_locations (
+      supplier_id TEXT NOT NULL,
+      area_key TEXT NOT NULL,
+      branches JSONB NOT NULL,
+      fetched_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (supplier_id, area_key)
     )
   `;
 

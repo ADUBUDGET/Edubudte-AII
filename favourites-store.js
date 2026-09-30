@@ -18,8 +18,9 @@ module.exports = {
 
   async insertFavourite(userId, f) {
     const [row] = await sql`
-      INSERT INTO favourites (user_id, item_name, item_key, store_name, price, link, thumbnail)
-      VALUES (${userId}, ${f.itemName}, ${f.itemKey}, ${f.storeName}, ${f.price}, ${f.link}, ${f.thumbnail})
+      INSERT INTO favourites (user_id, item_name, item_key, store_name, price, link, thumbnail, supplier_id, product_id, price_checked_at)
+      VALUES (${userId}, ${f.itemName}, ${f.itemKey}, ${f.storeName}, ${f.price}, ${f.link}, ${f.thumbnail},
+              ${f.supplierId ?? null}, ${f.productId ?? null}, ${f.priceCheckedAt ?? null})
       RETURNING *
     `;
     return row;
@@ -34,6 +35,9 @@ module.exports = {
           price = COALESCE(${f.price}, price),
           link = COALESCE(${f.link}, link),
           thumbnail = COALESCE(${f.thumbnail}, thumbnail),
+          supplier_id = CASE WHEN ${f.price != null} THEN ${f.supplierId ?? null} ELSE supplier_id END,
+          product_id = CASE WHEN ${f.price != null} THEN ${f.productId ?? null} ELSE product_id END,
+          price_checked_at = CASE WHEN ${f.price != null} THEN ${f.priceCheckedAt ?? null}::timestamptz ELSE price_checked_at END,
           updated_at = NOW()
       WHERE id = ${id} AND user_id = ${userId}
       RETURNING *

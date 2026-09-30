@@ -108,7 +108,7 @@ module.exports = {
       SELECT COALESCE(SUM(amount), 0) AS total_spent FROM budget_log WHERE user_id = ${userId}
     `;
     const [{ list_total }] = await sql`
-      SELECT COALESCE(SUM(price), 0) AS list_total
+      SELECT COALESCE(SUM(price * quantity), 0) AS list_total
       FROM grocery_list WHERE user_id = ${userId} AND purchased_at IS NULL
     `;
     const monthlyBudget = Number(user?.monthly_budget) || 0;
@@ -134,12 +134,48 @@ module.exports = {
 
   async insertListItem(userId, item) {
     const [row] = await sql`
-      INSERT INTO grocery_list (user_id, item_name, item_key, product_title, store_name, price, link, thumbnail, added_from)
-      VALUES (${userId}, ${item.itemName}, ${item.itemKey}, ${item.productTitle}, ${item.storeName},
-              ${item.price}, ${item.link}, ${item.thumbnail}, ${item.addedFrom})
+      INSERT INTO grocery_list (user_id, item_name, item_key, product_title, supplier_id, store_name, price,
+                                quantity, unit, category, link, thumbnail, added_from,
+                                product_id, price_checked_at, availability)
+      VALUES (${userId}, ${item.itemName}, ${item.itemKey}, ${item.productTitle}, ${item.supplierId ?? null}, ${item.storeName},
+              ${item.price}, ${item.quantity ?? 1}, ${item.unit ?? null}, ${item.category ?? null}, ${item.link}, ${item.thumbnail}, ${item.addedFrom},
+              ${item.productId ?? null}, ${item.priceCheckedAt ?? null}, ${item.price != null ? "listed" : null})
       RETURNING *
     `;
     return row;
+  },
+
+  // Adding a product that's already in the basket: new quantity, and the
+  // new shop/price details when they were given (fields left out are kept).
+  async mergeListItem(userId, id, m) {
+    const has = k => Object.prototype.hasOwnProperty.call(m, k);
+    const [row] = await sql`
+      UPDATE grocery_list
+      SET quantity = ${m.quantity},
+          supplier_id = CASE WHEN ${has("supplierId")} THEN ${m.supplierId ?? null} ELSE supplier_id END,
+          store_name = CASE WHEN ${has("storeName")} THEN ${m.storeName ?? null} ELSE store_name END,
+          price = CASE WHEN ${has("price")} THEN ${m.price ?? null}::numeric ELSE price END,
+          product_title = CASE WHEN ${has("productTitle")} THEN ${m.productTitle ?? null} ELSE product_title END,
+          link = CASE WHEN ${has("link")} THEN ${m.link ?? null} ELSE link END,
+          thumbnail = CASE WHEN ${has("thumbnail")} THEN ${m.thumbnail ?? null} ELSE thumbnail END,
+          unit = CASE WHEN ${has("unit")} THEN ${m.unit ?? null} ELSE unit END,
+          product_id = CASE WHEN ${has("productId")} THEN ${m.productId ?? null} ELSE product_id END,
+          price_checked_at = CASE WHEN ${has("priceCheckedAt")} THEN ${m.priceCheckedAt ?? null}::timestamptz ELSE price_checked_at END,
+          availability = CASE WHEN ${has("price")} AND ${m.price != null} THEN 'listed' ELSE availability END,
+          updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${userId}
+      RETURNING *
+    `;
+    return row;
+  },
+
+  async setQuantity(userId, id, quantity) {
+    const [row] = await sql`
+      UPDATE grocery_list SET quantity = ${quantity}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${userId} AND purchased_at IS NULL
+      RETURNING *
+    `;
+    return row || null;
   },
 
   async updateListItemPrice(userId, id, item) {
@@ -162,10 +198,14 @@ module.exports = {
     `;
   },
 
+  // Putting a bought item back in the basket also unlinks it from the
+  // purchase it was paid in (the payment itself stays in the budget log).
   async setPurchased(userId, id, purchased) {
     const [row] = await sql`
       UPDATE grocery_list
-      SET purchased_at = ${purchased ? new Date() : null}, updated_at = NOW()
+      SET purchased_at = ${purchased ? new Date() : null},
+          purchase_id = CASE WHEN ${purchased} THEN purchase_id ELSE NULL END,
+          updated_at = NOW()
       WHERE id = ${id} AND user_id = ${userId}
       RETURNING *
     `;

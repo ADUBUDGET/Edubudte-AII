@@ -29,23 +29,9 @@ const GENERIC_TERMS = new Set([
   "snacks", "takeaway", "takeaways", "misc", "other", "stuff", "items",
 ]);
 
-// Last-resort suggestions for brand-new users. Names only - prices are
-// always looked up from real data, never made up.
-const STAPLE_ITEMS = [
-  "Brown bread", "Long life milk", "Eggs", "Rice", "Pasta",
-  "Maize meal", "Baked beans", "Pilchards", "Peanut butter", "Toilet paper",
-];
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Lowercase, letters/digits only, single spaces. "Brown Bread!" -> "brown bread".
-function normaliseKey(text) {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .slice(0, 100);
-}
+const { normaliseKey, singular } = require("./text-keys");
 
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -113,7 +99,9 @@ function filterCandidates(candidates, { states = [], activeListKeys = [], now = 
 }
 
 // Personal suggestions first; if there are too few (new users), top up with
-// terms many students search for, then with common staples.
+// terms that at least POPULAR_MIN_USERS different students really searched
+// for. Nothing is made up: with no real activity at all the list is empty
+// and the page says how to get suggestions.
 function composeSuggestions({ personal = [], popular = [], states = [], activeListKeys = [], now = new Date(), limit = MAX_SUGGESTIONS }) {
   const ctx = { states, activeListKeys, now };
   const picked = filterCandidates(personal, ctx).slice(0, limit);
@@ -122,7 +110,6 @@ function composeSuggestions({ personal = [], popular = [], states = [], activeLi
   const seen = new Set(picked.map(c => c.itemKey));
   const fallback = [
     ...popular.map(p => ({ itemKey: normaliseKey(p.name), name: p.name, source: "popular", reasons: ["Popular with students on EduBudget"], score: 0 })),
-    ...STAPLE_ITEMS.map(name => ({ itemKey: normaliseKey(name), name, source: "staple", reasons: ["Common student staple"], score: 0 })),
   ];
   for (const c of filterCandidates(fallback, ctx)) {
     if (picked.length >= limit) break;
@@ -144,7 +131,6 @@ const ACCESSORY_WORDS = new Set([
   "frother", "holder", "dispenser", "bin", "container", "maker", "storage",
   "toy", "costume", "keyring", "keychain", "case", "cover", "mould", "mold",
 ]);
-const singular = w => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w);
 
 // True if every meaningful word of the query appears in the listing title
 // and the title isn't an accessory the student didn't ask for, so "milk"
@@ -186,10 +172,11 @@ function toOffers({ shoppingResults = [], specials = [] }) {
   for (const r of shoppingResults) {
     offers.push({
       kind: "online",
+      productId: r.product_id || null,
       title: r.title,
       price: r.extracted_price != null ? Number(r.extracted_price) : NaN,
       store: r.source || null,
-      link: r.link || null,
+      link: r.product_link || r.link || null,
       thumbnail: r.thumbnail || null,
     });
   }
@@ -210,20 +197,9 @@ function toOffers({ shoppingResults = [], specials = [] }) {
 
 const round2 = n => Math.round(n * 100) / 100;
 
-// South African retail chains students actually shop at. Matched as whole
-// words in the normalised store name, so "Checkers Sixty60", "makro.co.za"
-// and "Pick n Pay Online" all count.
-const SA_RETAILER_PATTERN = new RegExp("\\b(" + [
-  "shoprite", "checkers", "pick n pay", "picknpay", "pnp", "spar", "superspar", "kwikspar",
-  "woolworths", "boxer", "makro", "game", "usave", "ok foods", "ok grocer",
-  "food lover s market", "food lovers market", "clicks", "dis chem", "dischem",
-].join("|") + ")\\b");
-
-// Known chains, plus any South African online shop (a .co.za store name).
-function isSaRetailer(store) {
-  const s = String(store || "").toLowerCase();
-  return SA_RETAILER_PATTERN.test(normaliseKey(store)) || /\.co\.za\b/.test(s);
-}
+// Only approved suppliers (suppliers.js) count - foreign shops, marketplaces
+// and unknown sellers are never used for a price.
+const { matchSupplier } = require("./suppliers");
 
 // A listing priced under this fraction of the next cheapest one is treated
 // as a listing error, e.g. R5 brown bread when the next is R28.99.
@@ -239,27 +215,31 @@ function dropPriceOutliers(sorted) {
   return out;
 }
 
-// Picks the cheapest offer from a South African retailer (or the team's
-// store specials) that genuinely matches the item, and compares it with the
-// cheapest offer from a *different* SA retailer. Returns null if no SA
-// retailer has a relevant, priced offer - never a guessed or foreign price.
-function pickCheapest(query, offers) {
+// Picks the cheapest offer from an approved supplier (including the team's
+// store specials, which must also name an approved supplier) that genuinely
+// matches the item, and compares it with the cheapest offer from a
+// *different* supplier. `nearbySupplierIds` (a Set), when given, limits the
+// choice to suppliers with a branch inside the student's search radius.
+// Returns null if nothing qualifies - never a guessed or foreign price.
+function pickCheapest(query, offers, { nearbySupplierIds = null } = {}) {
   const local = offers
     .filter(o => Number.isFinite(o.price) && o.price > 0 && titleMatches(query, o.title))
-    .filter(o => o.kind === "special" || isSaRetailer(o.store))
+    .map(o => ({ ...o, supplier: matchSupplier(o.store) }))
+    .filter(o => o.supplier && (!nearbySupplierIds || nearbySupplierIds.has(o.supplier.id)))
     .sort((a, b) => a.price - b.price);
   const relevant = dropPriceOutliers(local);
   if (relevant.length === 0) return null;
 
   const best = relevant[0];
-  const storeKey = s => normaliseKey(s);
-  const next = relevant.find(o => storeKey(o.store) !== storeKey(best.store)) || null;
-  const stores = new Set(relevant.map(o => storeKey(o.store)).filter(Boolean));
+  const next = relevant.find(o => o.supplier.id !== best.supplier.id) || null;
+  const stores = new Set(relevant.map(o => o.supplier.id));
 
   return {
     title: best.title,
+    productId: best.productId || null,
     price: best.price,
-    store: best.store,
+    store: best.supplier.name,
+    supplierId: best.supplier.id,
     link: best.link,
     thumbnail: best.thumbnail || relevant.find(o => o.thumbnail)?.thumbnail || null,
     size: parseSize(best.title),
@@ -268,112 +248,133 @@ function pickCheapest(query, offers) {
     endsOn: best.kind === "special" ? best.endsOn : null,
     storesCompared: stores.size,
     offersCompared: relevant.length,
-    nextCheapest: next ? { store: next.store, price: next.price } : null,
+    nextCheapest: next ? { store: next.supplier.name, price: next.price } : null,
     savingVsNext: next ? round2(next.price - best.price) : null,
   };
 }
 
-// Smart Basket searches are pinned to Durban (where DUT is): this brings far
-// more local chains (Shoprite, Makro, Woolworths...) into the results than a
-// country-wide search, which is dominated by marketplaces and foreign shops.
-const SHOPPING_LOCATION = "Durban, KwaZulu-Natal, South Africa";
-
-// Cache keys carry the location so results from other searches aren't mixed in.
-const priceCacheKey = name => `durban:${normaliseKey(name)}`;
-
-// Real SerpAPI Google Shopping lookup for South African results near Durban.
-async function fetchGoogleShopping(query) {
-  if (!process.env.SERPAPI_KEY) throw new Error("SERPAPI_KEY not configured on server");
-  const params = new URLSearchParams({
-    engine: "google_shopping",
-    // Lowercase on purpose: "Pasta" returned only foreign shops while
-    // "pasta" returned Shoprite and Makro.
-    q: String(query).trim().toLowerCase(),
-    api_key: process.env.SERPAPI_KEY,
-    gl: "za",
-    hl: "en",
-    location: SHOPPING_LOCATION,
-  });
-  const resp = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
-  if (!resp.ok) throw new Error(`SerpAPI request failed (${resp.status})`);
-  const data = await resp.json();
-  return (data.shopping_results || []).slice(0, 40).map(r => ({
-    title: r.title,
-    price: r.price,
-    extracted_price: r.extracted_price,
-    source: r.source,
-    link: r.link,
-    thumbnail: r.thumbnail,
-  }));
-}
+// Smart Basket prices come from the same real Google Shopping lookup as the
+// Shop (shopping-results.js), pinned to SHOPPING_LOCATION (default Durban),
+// cached under a versioned key.
+const { SHOPPING_LOCATION, fetchShoppingResults, versionedKey, isValidCachedResults, cleanPriceMeta } = require("./shopping-results");
+const priceCacheKey = name => versionedKey("basket", SHOPPING_LOCATION, name);
 
 // ---------------------------------------------------------------
 // SERVICE: store-backed actions (store = smart-basket-store.js or a fake)
 // ---------------------------------------------------------------
+const MAX_QUANTITY = 99;
+const { getSupplier } = require("./suppliers");
+const { guessCategory } = require("./categories");
+
+const badInput = message => Object.assign(new Error(message), { status: 400 });
+
+// Validates what the page sends when adding to the basket (grocery list).
+// A shop must be an approved supplier: given by id (from Shop / Smart
+// Basket results) or by a name that maps to one. Items without a shop
+// (typed by hand, or from a favourite with no store) are fine.
 function cleanItemInput(body) {
-  const name = typeof body?.itemName === "string" ? body.itemName.trim().slice(0, 120) : "";
+  const name = typeof body?.itemName === "string" ? body.itemName.trim().replace(/\s+/g, " ").slice(0, 120) : "";
   const price = body?.price != null && body.price !== "" ? Number(body.price) : null;
   const httpLink = v => (typeof v === "string" && /^https?:\/\//i.test(v) ? v.slice(0, 2000) : null);
+  const qty = body?.quantity == null || body.quantity === "" ? 1 : Number(body.quantity);
+  if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QUANTITY) throw badInput(`Quantity must be a whole number from 1 to ${MAX_QUANTITY}.`);
+
+  let supplier = null;
+  if (body?.supplierId) {
+    supplier = getSupplier(body.supplierId);
+    if (!supplier) throw badInput("That shop isn't one of our approved stores.");
+  } else if (typeof body?.storeName === "string" && body.storeName.trim()) {
+    supplier = matchSupplier(body.storeName);
+    if (!supplier) throw badInput(`"${body.storeName.trim().slice(0, 60)}" isn't one of our approved stores.`);
+  }
+  const productTitle = typeof body?.productTitle === "string" ? body.productTitle.slice(0, 300) : null;
+  const category = typeof body?.category === "string" && body.category.trim() ? body.category.trim().slice(0, 40) : guessCategory(productTitle || name);
+  const cleanPrice = Number.isFinite(price) && price >= 0 && price <= 100000 ? Math.round(price * 100) / 100 : null;
+  const { productId, priceCheckedAt } = cleanPriceMeta(body || {}, { hasPrice: cleanPrice != null });
   return {
+    productId,
+    priceCheckedAt,
     itemName: name,
     itemKey: normaliseKey(name),
-    productTitle: typeof body?.productTitle === "string" ? body.productTitle.slice(0, 300) : null,
-    storeName: typeof body?.storeName === "string" ? body.storeName.slice(0, 120) : null,
-    price: Number.isFinite(price) && price >= 0 ? price : null,
+    productTitle,
+    supplierId: supplier ? supplier.id : null,
+    storeName: supplier ? supplier.name : null,
+    price: cleanPrice,
+    quantity: qty,
+    unit: typeof body?.unit === "string" && body.unit.trim() ? body.unit.trim().slice(0, 30) : parseSize(productTitle || name),
+    category,
     link: httpLink(body?.link),
     thumbnail: httpLink(body?.thumbnail),
-    addedFrom: body?.addedFrom === "smart_basket" ? "smart_basket" : "manual",
+    addedFrom: ["smart_basket", "shop", "favourite"].includes(body?.addedFrom) ? body.addedFrom : "manual",
   };
 }
 
-// Adds an item to the active grocery list, or - if it's already there -
-// refreshes its price details and reports alreadyExisted instead of adding
-// a duplicate.
+// Adds an item to the basket (the active grocery list). The same product
+// (normalised name) is never added twice:
+// - same shop (or no shop): the quantities are added together
+// - a different shop: the item switches to the new shop and price, and the
+//   quantities are added together
+// Returns { item, alreadyExisted, merge: null | "quantity" | "switched" }.
 async function addItemToList(store, userId, body) {
   const item = cleanItemInput(body);
-  if (!item.itemKey) {
-    const err = new Error("itemName is required");
-    err.status = 400;
-    throw err;
-  }
+  if (!item.itemKey) throw badInput("itemName is required");
   const remainingBudget = await store.getRemainingBudget(userId);
-  const refresh = async existing => {
-    const availableForUpdate = remainingBudget == null
-      ? null
-      : remainingBudget + (Number(existing.price) || 0);
-    if (availableForUpdate != null && item.price != null && item.price > availableForUpdate) {
-      const err = new Error(`That price would exceed your remaining budget of R${availableForUpdate.toFixed(2)}.`);
-      err.status = 409;
-      throw err;
+  const merge = async existing => {
+    const switched = item.supplierId && item.supplierId !== existing.supplier_id;
+    const quantity = Math.min(MAX_QUANTITY, (Number(existing.quantity) || 1) + item.quantity);
+    const previousTotal = (Number(existing.price) || 0) * (Number(existing.quantity) || 1);
+    const mergedPrice = item.price != null ? item.price : (switched ? null : existing.price);
+    if (remainingBudget != null) {
+      if (mergedPrice == null) throw badInput("Add a price so I can check this item against your budget.");
+      const availableForUpdate = remainingBudget + previousTotal;
+      if (mergedPrice * quantity > availableForUpdate) {
+        const err = new Error(`That price would exceed your remaining budget of R${availableForUpdate.toFixed(2)}.`);
+        err.status = 409;
+        throw err;
+      }
     }
-    const updated = item.price != null
-      ? await store.updateListItemPrice(userId, existing.id, item)
-      : existing;
-    return { item: updated, alreadyExisted: true };
+
+    const updated = await store.mergeListItem(userId, existing.id, {
+      quantity,
+      // Keep the saved shop/price unless a (new) shop or price was given.
+      ...(switched || item.price != null
+        ? { supplierId: item.supplierId ?? existing.supplier_id, storeName: item.storeName ?? existing.store_name,
+            price: item.price, productTitle: item.productTitle ?? existing.product_title,
+            link: item.link ?? existing.link, thumbnail: item.thumbnail ?? existing.thumbnail, unit: item.unit ?? existing.unit,
+            productId: item.productId ?? (switched ? null : existing.product_id),
+            priceCheckedAt: item.price != null ? item.priceCheckedAt : existing.price_checked_at }
+        : {}),
+    });
+    return { item: updated, alreadyExisted: true, merge: switched ? "switched" : "quantity" };
   };
 
   const existing = await store.findActiveListItem(userId, item.itemKey);
-  if (existing) return refresh(existing);
+  if (existing) return merge(existing);
   if (remainingBudget != null && item.price == null) {
-    const err = new Error("Add a price so I can check this item against your budget.");
-    err.status = 400;
-    throw err;
+    throw badInput("Add a price so I can check this item against your budget.");
   }
-  if (remainingBudget != null && item.price > remainingBudget) {
+  if (remainingBudget != null && item.price * item.quantity > remainingBudget) {
     const err = new Error(`That price exceeds your remaining budget of R${remainingBudget.toFixed(2)}.`);
     err.status = 409;
     throw err;
   }
   try {
-    return { item: await store.insertListItem(userId, item), alreadyExisted: false };
+    return { item: await store.insertListItem(userId, item), alreadyExisted: false, merge: null };
   } catch (err) {
     // Two taps at once: the unique index caught the duplicate.
     if (err.code === "23505") {
       const raced = await store.findActiveListItem(userId, item.itemKey);
-      if (raced) return refresh(raced);
+      if (raced) return merge(raced);
     }
     throw err;
   }
+}
+
+// Sets an item's quantity (active items only).
+async function setItemQuantity(store, userId, id, quantity) {
+  const q = Number(quantity);
+  if (!Number.isInteger(q) || q < 1 || q > MAX_QUANTITY) throw badInput(`Quantity must be a whole number from 1 to ${MAX_QUANTITY}.`);
+  return store.setQuantity(userId, id, q);
 }
 
 async function setSuggestionState(store, userId, body, status, now = new Date()) {
@@ -406,8 +407,9 @@ async function loadSuggestions(store, userId, now = new Date()) {
 
 // Finds the current cheapest price for one item from store specials plus
 // cached or live SerpAPI results. `budget.live` is a shared counter of how
-// many live lookups this request may still make.
-async function priceItem(name, { store, fetchShopping, specials, budget, now = new Date() }) {
+// many live lookups this request may still make. `nearbySupplierIds` (a
+// Set, or null for no area) limits "cheapest" to shops near the student.
+async function priceItem(name, { store, fetchShopping, specials, budget, now = new Date(), nearbySupplierIds = null }) {
   const key = priceCacheKey(name);
   const matchingSpecials = specials.filter(s => titleMatches(name, s.item));
   let shoppingResults = [];
@@ -415,7 +417,10 @@ async function priceItem(name, { store, fetchShopping, specials, budget, now = n
   let status = "ok";
 
   const cached = await store.getCachedPrices(key);
-  const fresh = cached && now - new Date(cached.fetchedAt) < PRICE_CACHE_HOURS * 60 * 60 * 1000;
+  // Only fresh entries in the current full format count; older or
+  // incomplete ones are fetched again, never shown.
+  const fresh = cached && isValidCachedResults(cached.results) &&
+    now - new Date(cached.fetchedAt) < PRICE_CACHE_HOURS * 60 * 60 * 1000;
   if (fresh) {
     shoppingResults = cached.results;
     checkedAt = cached.fetchedAt;
@@ -432,15 +437,10 @@ async function priceItem(name, { store, fetchShopping, specials, budget, now = n
   } else {
     status = "not_checked";
   }
-  // An expired cache entry is still better than nothing, as long as the card
-  // says when it was checked.
-  if (shoppingResults.length === 0 && cached && status !== "ok") {
-    shoppingResults = cached.results;
-    checkedAt = cached.fetchedAt;
-    status = "ok";
-  }
+  // An expired price is never used: the card says "not checked yet" (and is
+  // priced live when it reaches the top) or "couldn't check prices".
 
-  const best = pickCheapest(name, toOffers({ shoppingResults, specials: matchingSpecials }));
+  const best = pickCheapest(name, toOffers({ shoppingResults, specials: matchingSpecials }), { nearbySupplierIds });
   if (best) {
     // Specials are only for today's date range, so they count as checked now.
     return { price: best, priceStatus: "ok", priceCheckedAt: best.kind === "special" ? now : checkedAt };
@@ -451,7 +451,10 @@ async function priceItem(name, { store, fetchShopping, specials, budget, now = n
 // ---------------------------------------------------------------
 // ROUTES
 // ---------------------------------------------------------------
-function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, now = () => new Date() }) {
+// nearbyFor(userId) -> { nearbySupplierIds: Set | null, area: { label, radiusKm } | null }
+function createSmartBasketRoutes({ store, fetchShopping = name => fetchShoppingResults(name), now = () => new Date(), nearbyFor = null }) {
+  const nearbyContext = async userId => (nearbyFor ? nearbyFor(userId) : { nearbySupplierIds: null, area: null });
+
   const fail = (res, err, message) => {
     if (err.status) return res.status(err.status).json({ error: err.message });
     console.error(err);
@@ -464,14 +467,15 @@ function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, n
         const at = now();
         const { suggestions, personalised } = await loadSuggestions(store, req.userId, at);
         const specials = await store.getActiveSpecials();
+        const { nearbySupplierIds, area } = await nearbyContext(req.userId);
         const budget = { live: MAX_LIVE_PRICE_LOOKUPS };
         const priced = [];
         for (const s of suggestions) {
-          const p = await priceItem(s.name, { store, fetchShopping, specials, budget, now: at });
+          const p = await priceItem(s.name, { store, fetchShopping, specials, budget, now: at, nearbySupplierIds });
           priced.push({ itemKey: s.itemKey, name: s.name, source: s.source, reasons: s.reasons, ...p });
         }
         const remainingBudget = await store.getRemainingBudget(req.userId);
-        res.json({ suggestions: priced, personalised, remainingBudget, skipCooldownDays: SKIP_COOLDOWN_DAYS });
+        res.json({ suggestions: priced, personalised, remainingBudget, skipCooldownDays: SKIP_COOLDOWN_DAYS, area });
       } catch (err) {
         fail(res, err, "Failed to load Smart Basket");
       }
@@ -483,7 +487,8 @@ function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, n
         const name = typeof req.query.item === "string" ? req.query.item.trim().slice(0, 120) : "";
         if (!normaliseKey(name)) return res.status(400).json({ error: "item is required" });
         const specials = await store.getActiveSpecials();
-        const p = await priceItem(name, { store, fetchShopping, specials, budget: { live: 1 }, now: now() });
+        const { nearbySupplierIds } = await nearbyContext(req.userId);
+        const p = await priceItem(name, { store, fetchShopping, specials, budget: { live: 1 }, now: now(), nearbySupplierIds });
         res.json(p);
       } catch (err) {
         fail(res, err, "Price check failed");
@@ -545,9 +550,20 @@ function createSmartBasketRoutes({ store, fetchShopping = fetchGoogleShopping, n
     async updateListItem(req, res) {
       try {
         if (!/^\d+$/.test(req.params.id)) return res.status(404).json({ error: "Grocery list item not found" });
-        const purchased = req.body?.purchased === true;
-        const row = await store.setPurchased(req.userId, req.params.id, purchased);
-        if (!row) return res.status(404).json({ error: "Grocery list item not found" });
+        const body = req.body || {};
+        if (body.quantity === undefined && body.purchased === undefined) {
+          return res.status(400).json({ error: "Send a quantity or purchased: true/false." });
+        }
+        let row = null;
+        if (body.quantity !== undefined) {
+          row = await setItemQuantity(store, req.userId, req.params.id, body.quantity);
+          if (!row) return res.status(404).json({ error: "That item isn't in your basket any more." });
+        }
+        if (body.purchased !== undefined) {
+          if (typeof body.purchased !== "boolean") return res.status(400).json({ error: "purchased must be true or false" });
+          row = await store.setPurchased(req.userId, req.params.id, body.purchased);
+          if (!row) return res.status(404).json({ error: "Grocery list item not found" });
+        }
         res.json(row);
       } catch (err) {
         if (err.code === "23505") return res.status(409).json({ error: "That item is already on your list." });
@@ -586,7 +602,6 @@ module.exports = {
   PRICE_CACHE_HOURS,
   MAX_LIVE_PRICE_LOOKUPS,
   MIN_PERSONAL_SUGGESTIONS,
-  STAPLE_ITEMS,
   normaliseKey,
   singular,
   filterPurchaseSignals,
@@ -596,10 +611,14 @@ module.exports = {
   titleMatches,
   parseSize,
   toOffers,
-  isSaRetailer,
+  matchSupplier,
   dropPriceOutliers,
   pickCheapest,
+  priceCacheKey,
   addItemToList,
+  setItemQuantity,
+  cleanItemInput,
+  MAX_QUANTITY,
   setSuggestionState,
   loadSuggestions,
   priceItem,
