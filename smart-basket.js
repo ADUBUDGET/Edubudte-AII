@@ -324,8 +324,9 @@ async function addItemToList(store, userId, body) {
     const quantity = Math.min(MAX_QUANTITY, (Number(existing.quantity) || 1) + item.quantity);
     const previousTotal = (Number(existing.price) || 0) * (Number(existing.quantity) || 1);
     const mergedPrice = item.price != null ? item.price : (switched ? null : existing.price);
-    if (remainingBudget != null) {
-      if (mergedPrice == null) throw badInput("Add a price so I can check this item against your budget.");
+    // Only known prices can be checked against the budget; unpriced items
+    // are allowed and show as "Price unknown" in the basket.
+    if (remainingBudget != null && mergedPrice != null) {
       const availableForUpdate = remainingBudget + previousTotal;
       if (mergedPrice * quantity > availableForUpdate) {
         const err = new Error(`That price would exceed your remaining budget of R${availableForUpdate.toFixed(2)}.`);
@@ -350,10 +351,7 @@ async function addItemToList(store, userId, body) {
 
   const existing = await store.findActiveListItem(userId, item.itemKey);
   if (existing) return merge(existing);
-  if (remainingBudget != null && item.price == null) {
-    throw badInput("Add a price so I can check this item against your budget.");
-  }
-  if (remainingBudget != null && item.price * item.quantity > remainingBudget) {
+  if (remainingBudget != null && item.price != null && item.price * item.quantity > remainingBudget) {
     const err = new Error(`That price exceeds your remaining budget of R${remainingBudget.toFixed(2)}.`);
     err.status = 409;
     throw err;

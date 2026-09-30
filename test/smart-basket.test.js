@@ -391,13 +391,13 @@ test("repricing an existing item cannot exceed the remaining budget", async () =
   assert.equal(store.data.list[0].price, 20);
 });
 
-test("a priced budget requires a price for new grocery-list items", async () => {
+test("items without a price can still be added when a budget is set", async () => {
   const store = createFakeStore({ remainingBudget: 25 });
-  await assert.rejects(
-    sb.addItemToList(store, 1, { itemName: "Milk" }),
-    { status: 400 },
-  );
-  assert.equal(store.data.list.length, 0);
+  const out = await sb.addItemToList(store, 1, { itemName: "Milk" });
+  assert.equal(out.item.price, null);
+  assert.equal(store.data.list.length, 1);
+  const again = await sb.addItemToList(store, 1, { itemName: "milk" });
+  assert.equal(again.merge, "quantity", "unpriced items still merge quantities");
 });
 
 test("duplicate prevention still works when two adds race past the first check", async () => {

@@ -356,7 +356,10 @@
 
   function canAddSuggestion(suggestion) {
     if (remainingBudget == null) return true;
-    const price = Number(suggestion && suggestion.price && suggestion.price.price);
+    // Unpriced items can be added (they aren't counted); priced ones must fit.
+    const p = suggestion && suggestion.price && suggestion.price.price;
+    if (p == null) return true;
+    const price = Number(p);
     return Number.isFinite(price) && price >= 0 && price <= remainingBudget;
   }
 
@@ -390,7 +393,7 @@
         error: "Couldn't check prices right now - try again later.",
       };
       box.appendChild(el('p', 'font-body-md text-on-surface-variant', messages[s.priceStatus] || 'No price available.'));
-      if (remainingBudget != null) box.appendChild(el('p', 'font-label-sm text-on-surface-variant', 'A verified price is required before this can be added within your budget.'));
+      if (remainingBudget != null) box.appendChild(el('p', 'font-label-sm text-on-surface-variant', "You can still add it - it won't count towards your budget until it has a price."));
       return box;
     }
     const row = el('div', 'flex items-baseline gap-2 flex-wrap');
@@ -597,9 +600,7 @@
     const s = deck[0];
     if (busy || !s) return;
     if (direction === 'add' && !canAddSuggestion(s)) {
-      toast(remainingBudget != null && s.price && s.price.price != null
-        ? 'That item is over your remaining basket budget.'
-        : 'A verified price is needed before this item can be added within your budget.', true);
+      toast('That item is over your remaining basket budget.', true);
       return;
     }
     busy = true;
@@ -754,7 +755,7 @@
     try {
       await api('PUT', '/api/grocery-list/' + item.id, { purchased: bought });
       if (remainingBudget != null) {
-        remainingBudget += (bought ? 1 : -1) * (Number(item.price) || 0);
+        remainingBudget += (bought ? 1 : -1) * (Number(item.price) || 0) * (Number(item.quantity) || 1);
         updateBudgetStatus();
         renderDeck();
       }
