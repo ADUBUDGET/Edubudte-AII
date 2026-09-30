@@ -22,6 +22,7 @@ const favouritesStore = require("./favourites-store");
 const passwordReset = require("./password-reset");
 const passwordResetStore = require("./password-reset-store");
 const mailer = require("./mailer");
+const { buildOfflineChatReply } = require("./chat-fallback");
 
 const app = express();
 // Behind Netlify's (or any host's) proxy: use the real client IP for rate
@@ -186,12 +187,24 @@ Recommend the ONE best option considering both price and distance (closer is bet
 Strict formatting rules: no markdown tables, no pipe characters, no bullet points, no headers, no bold/asterisks - plain prose only, maximum 45 words. Mention the store name and price.
 `.trim();
 
-    const completion = await groq.chat.completions.create({
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-    });
-    const recommendation = completion.choices[0]?.message?.content || "No recommendation generated.";
+    let recommendation;
+    try {
+      const completion = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+      });
+      recommendation = completion.choices[0]?.message?.content || "No recommendation generated.";
+    } catch (err) {
+      console.error("Groq recommendation failed:", err.message);
+      const candidates = nearbyResults.length ? nearbyResults : rawResults;
+      const pricedCandidates = candidates.filter(r => r.extracted_price != null && Number.isFinite(Number(r.extracted_price)));
+      const fallback = (pricedCandidates.length ? pricedCandidates : candidates)
+        .sort((a, b) => Number(a.extracted_price ?? Infinity) - Number(b.extracted_price ?? Infinity))[0];
+      recommendation = fallback
+        ? `AI recommendations are temporarily unavailable. Consider ${fallback.title} from ${fallback.supplierName}${fallback.price ? ` for ${fallback.price}` : ""}.`
+        : "AI recommendations are temporarily unavailable. Review the listings below.";
+    }
 
     await sql`
       INSERT INTO search_history (user_id, item_query, budget, location)
@@ -542,12 +555,20 @@ ${remainingBudget != null ? `Remaining budget after buying the item: R${remainin
 Recommend the single best travel option and explain briefly (max 60 words). Weigh the transport cost against the remaining budget.
 `.trim();
 
-    const completion = await groq.chat.completions.create({
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-    });
-    const recommendation = completion.choices[0]?.message?.content || "No recommendation generated.";
+    let recommendation;
+    try {
+      const completion = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+      });
+      recommendation = completion.choices[0]?.message?.content || "No recommendation generated.";
+    } catch (err) {
+      console.error("Groq travel recommendation failed:", err.message);
+      recommendation = remainingBudget != null && taxiEstimate > remainingBudget
+        ? `AI recommendations are temporarily unavailable. Walking is free and takes about ${walkingMin.toFixed(0)} minutes; the estimated taxi fare is over your remaining budget.`
+        : `AI recommendations are temporarily unavailable. Walking is free and takes about ${walkingMin.toFixed(0)} minutes. Estimated taxi: R${taxiEstimate.toFixed(2)}${uberEstimate != null ? `; estimated Uber: R${uberEstimate.toFixed(2)}` : ""}.`;
+    }
 
     res.json({
       distanceKm: +distanceKm.toFixed(2),
@@ -646,27 +667,29 @@ app.post("/api/chat", requireAuth, chatLimiter, async (req, res) => {
     `;
     const history = recent.reverse();
 
-    const systemPrompt = buildChatSystemPrompt({
-      monthlyBudget: Number(user?.monthly_budget) || 0,
-      totalSpent: Number(total_spent),
-      categories,
-    });
+    const monthlyBudget = Number(user?.monthly_budget) || 0;
+    const totalSpent = Number(total_spent) || 0;
+    const systemPrompt = buildChatSystemPrompt({ monthlyBudget, totalSpent, categories });
+    let reply;
+    try {
+      const completion = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...history.map(m => ({ role: m.role, content: m.content })),
+          { role: "user", content: message },
+        ],
+        temperature: 0.6,
+        max_tokens: 1500,
+      });
+      reply = completion.choices[0]?.message?.content?.trim() ||
+        "Sorry, I couldn't come up with a reply. Try asking again?";
+    } catch (err) {
+      console.error("EduChatBot AI request failed:", err.message);
+      reply = buildOfflineChatReply({ message, monthlyBudget, totalSpent, categories });
+    }
 
-    const completion = await groq.chat.completions.create({
-      model: GROQ_MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...history.map(m => ({ role: m.role, content: m.content })),
-        { role: "user", content: message },
-      ],
-      temperature: 0.6,
-      max_tokens: 1500,
-    });
-    const reply =
-      completion.choices[0]?.message?.content?.trim() ||
-      "Sorry, I couldn't come up with a reply. Try asking again?";
-
-    // Save both messages only after Groq succeeded.
+    // Save both messages after either an AI or offline reply is ready.
     await sql`INSERT INTO chat_messages (user_id, role, content) VALUES (${uid}, 'user', ${message})`;
     await sql`INSERT INTO chat_messages (user_id, role, content) VALUES (${uid}, 'assistant', ${reply})`;
 

@@ -24,6 +24,7 @@ function createFakeStore(seed = {}) {
     states: new Map(),
     list: [],
     nextId: 1,
+    remainingBudget: seed.remainingBudget === undefined ? 500 : seed.remainingBudget,
   };
   const key = (u, k) => `${u}:${k}`;
   return {
@@ -51,7 +52,13 @@ function createFakeStore(seed = {}) {
     async getHidden(userId) {
       return [...data.states.values()].filter(s => s.user_id === userId && s.status === "hidden");
     },
-    async getRemainingBudget() { return 500; },
+    async getRemainingBudget() {
+      if (data.remainingBudget == null) return null;
+      const reserved = data.list
+        .filter(r => !r.purchased_at)
+        .reduce((sum, row) => sum + (Number(row.price) || 0) * (Number(row.quantity) || 1), 0);
+      return data.remainingBudget - reserved;
+    },
     async findActiveListItem(userId, itemKey) {
       return data.list.find(r => r.user_id === userId && r.item_key === itemKey && !r.purchased_at) || null;
     },
@@ -316,14 +323,14 @@ test("adding the same product from another shop switches shop and price, keeping
 });
 
 test("quantity is capped at 99 when merging", async () => {
-  const store = createFakeStore();
+  const store = createFakeStore({ remainingBudget: null });
   await sb.addItemToList(store, 1, { itemName: "Eggs", quantity: 98 });
   await sb.addItemToList(store, 1, { itemName: "Eggs", quantity: 5 });
   assert.equal(store.data.list[0].quantity, 99);
 });
 
 test("basket input is validated: quantity, approved shops, sensible defaults", async () => {
-  const store = createFakeStore();
+  const store = createFakeStore({ remainingBudget: null });
   for (const bad of [{ itemName: "Rice", quantity: 0 }, { itemName: "Rice", quantity: 1.5 }, { itemName: "Rice", quantity: 100 },
     { itemName: "Rice", storeName: "Desertcart.ae" }, { itemName: "Rice", supplierId: "nope" }]) {
     await assert.rejects(sb.addItemToList(store, 1, bad), { status: 400 }, JSON.stringify(bad));
@@ -336,7 +343,7 @@ test("basket input is validated: quantity, approved shops, sensible defaults", a
 });
 
 test("quantity can be changed on basket items but not on bought ones", async () => {
-  const store = createFakeStore();
+  const store = createFakeStore({ remainingBudget: null });
   const { item } = await sb.addItemToList(store, 1, { itemName: "Milk" });
   assert.equal((await sb.setItemQuantity(store, 1, item.id, 4)).quantity, 4);
   await assert.rejects(sb.setItemQuantity(store, 1, item.id, 0), { status: 400 });
@@ -345,8 +352,56 @@ test("quantity can be changed on basket items but not on bought ones", async () 
   assert.equal(await sb.setItemQuantity(store, 2, item.id, 2), null, "other users can't change it");
 });
 
+test("adding a priced item cannot exceed the remaining budget", async () => {
+  const store = createFakeStore({ remainingBudget: 25 });
+  await sb.addItemToList(store, 1, { itemName: "Rice", price: 20 });
+  await assert.rejects(
+    sb.addItemToList(store, 1, { itemName: "Milk", price: 6 }),
+    { status: 409 },
+  );
+  assert.equal(store.data.list.length, 1);
+});
+
+test("adding multiple units checks their full cost against the remaining budget", async () => {
+  const store = createFakeStore({ remainingBudget: 25 });
+  await assert.rejects(
+    sb.addItemToList(store, 1, { itemName: "Rice", price: 10, quantity: 3 }),
+    { status: 409 },
+  );
+  assert.equal(store.data.list.length, 0);
+});
+
+test("merging quantity checks the updated total against the remaining budget", async () => {
+  const store = createFakeStore({ remainingBudget: 25 });
+  await sb.addItemToList(store, 1, { itemName: "Rice", price: 10, quantity: 2 });
+  await assert.rejects(
+    sb.addItemToList(store, 1, { itemName: "Rice", price: 10, quantity: 2 }),
+    { status: 409 },
+  );
+  assert.equal(store.data.list[0].quantity, 2);
+});
+
+test("repricing an existing item cannot exceed the remaining budget", async () => {
+  const store = createFakeStore({ remainingBudget: 25 });
+  await sb.addItemToList(store, 1, { itemName: "Rice", price: 20 });
+  await assert.rejects(
+    sb.addItemToList(store, 1, { itemName: "Rice", price: 26 }),
+    { status: 409 },
+  );
+  assert.equal(store.data.list[0].price, 20);
+});
+
+test("a priced budget requires a price for new grocery-list items", async () => {
+  const store = createFakeStore({ remainingBudget: 25 });
+  await assert.rejects(
+    sb.addItemToList(store, 1, { itemName: "Milk" }),
+    { status: 400 },
+  );
+  assert.equal(store.data.list.length, 0);
+});
+
 test("duplicate prevention still works when two adds race past the first check", async () => {
-  const store = createFakeStore();
+  const store = createFakeStore({ remainingBudget: null });
   await sb.addItemToList(store, 1, { itemName: "Milk" });
   const realFind = store.findActiveListItem;
   let first = true;
@@ -357,7 +412,7 @@ test("duplicate prevention still works when two adds race past the first check",
 });
 
 test("an item can be re-added once the earlier one is ticked off", async () => {
-  const store = createFakeStore();
+  const store = createFakeStore({ remainingBudget: null });
   const { item } = await sb.addItemToList(store, 1, { itemName: "Milk" });
   await store.setPurchased(1, item.id, true);
   const again = await sb.addItemToList(store, 1, { itemName: "Milk" });
@@ -366,7 +421,7 @@ test("an item can be re-added once the earlier one is ticked off", async () => {
 });
 
 test("lists are per user", async () => {
-  const store = createFakeStore();
+  const store = createFakeStore({ remainingBudget: null });
   await sb.addItemToList(store, 1, { itemName: "Milk" });
   const other = await sb.addItemToList(store, 2, { itemName: "Milk" });
   assert.equal(other.alreadyExisted, false);
@@ -440,7 +495,7 @@ test("GET /api/smart-basket returns priced cards with reasons", async () => {
 });
 
 test("POST /api/grocery-list answers 201 for new items and 200 for duplicates", async () => {
-  const routes = sb.createSmartBasketRoutes({ store: createFakeStore(), now: () => NOW });
+  const routes = sb.createSmartBasketRoutes({ store: createFakeStore({ remainingBudget: null }), now: () => NOW });
   const first = fakeRes();
   await routes.addToList({ userId: 1, body: { itemName: "Eggs" } }, first);
   const second = fakeRes();
@@ -465,7 +520,7 @@ test("titleMatches skips accessories unless the student asked for one", () => {
 });
 
 test("grocery list routes accept numeric ids and 404 anything else", async () => {
-  const store = createFakeStore();
+  const store = createFakeStore({ remainingBudget: null });
   const { item } = await sb.addItemToList(store, 1, { itemName: "Milk" });
   const routes = sb.createSmartBasketRoutes({ store, now: () => NOW });
 
