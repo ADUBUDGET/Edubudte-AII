@@ -553,12 +553,20 @@ ${remainingBudget != null ? `Remaining budget after buying the item: R${remainin
 Recommend the single best travel option and explain briefly (max 60 words). Weigh the transport cost against the remaining budget.
 `.trim();
 
-    const completion = await groq.chat.completions.create({
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-    });
-    const recommendation = completion.choices[0]?.message?.content || "No recommendation generated.";
+    let recommendation;
+    try {
+      const completion = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+      });
+      recommendation = completion.choices[0]?.message?.content || "No recommendation generated.";
+    } catch (err) {
+      console.error("Groq travel recommendation failed:", err.message);
+      recommendation = remainingBudget != null && taxiEstimate > remainingBudget
+        ? `AI recommendations are temporarily unavailable. Walking is free and takes about ${walkingMin.toFixed(0)} minutes; the estimated taxi fare is over your remaining budget.`
+        : `AI recommendations are temporarily unavailable. Walking is free and takes about ${walkingMin.toFixed(0)} minutes. Estimated taxi: R${taxiEstimate.toFixed(2)}${uberEstimate != null ? `; estimated Uber: R${uberEstimate.toFixed(2)}` : ""}.`;
+    }
 
     res.json({
       distanceKm: +distanceKm.toFixed(2),
